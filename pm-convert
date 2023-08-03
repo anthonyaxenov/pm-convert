@@ -1,0 +1,28 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types = 1);
+
+use PmConverter\Processor;
+
+$paths = [
+    __DIR__ . '/../../autoload.php',
+    __DIR__ . '/../autoload.php',
+    __DIR__ . '/vendor/autoload.php'
+];
+$file = null;
+foreach ($paths as $path) {
+    if (file_exists($path)) {
+        require_once $file = $path;
+        break;
+    }
+}
+
+is_null($file) && throw new RuntimeException('Unable to locate autoload.php file.');
+
+try {
+    (new Processor($argv))->start();
+} catch (Exception $e) {
+    fwrite(STDERR, sprintf('ERROR: %s%s', $e->getMessage(), PHP_EOL));
+    die(1);
+}
