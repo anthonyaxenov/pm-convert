@@ -55,12 +55,24 @@ class Processor
     protected array $collections = [];
 
     /**
+     * @var int Initial timestamp
+     */
+    protected int $init_time;
+
+    /**
+     * @var int Initial RAM usage
+     */
+    protected int $init_ram;
+
+    /**
      * Constructor
      *
      * @param array $argv Arguments came from cli
      */
     public function __construct(protected array $argv)
     {
+        $this->init_time = hrtime(true);
+        $this->init_ram = memory_get_usage(true);
     }
 
     /**
@@ -181,22 +193,43 @@ class Processor
      *
      * @throws Exception
      */
-    public function start(): void
+    public function convert(): void
     {
         $this->parseArgs();
         $this->initOutputDirectory();
         $this->initConverters();
         $this->initCollections();
+        $count = count($this->collections);
+        $current = 1;
+        $success = 0;
         print(implode(PHP_EOL, array_merge($this->version(), $this->copyright())) . PHP_EOL . PHP_EOL);
         foreach ($this->collections as $collectionName => $collection) {
-            print("Converting '$collectionName':" . PHP_EOL);
+            printf("Converting '%s' (%d/%d):%s", $collectionName, $current, $count, PHP_EOL);
             foreach ($this->converters as $type => $exporter) {
-                print("\t-> " . strtolower($type));
+                printf(' > %s', strtolower($type));
                 $outputPath = sprintf('%s%s%s', $this->outputPath, DIRECTORY_SEPARATOR, $collectionName);
                 $exporter->convert($collection, $outputPath);
-                printf("\t- OK: %s%s", $exporter->getOutputPath(), PHP_EOL);
+                printf(' - OK: %s%s', $exporter->getOutputPath(), PHP_EOL);
             }
+            print(PHP_EOL);
+            ++$current;
+            ++$success;
         }
+        $this->printStats($success, $current);
+    }
+
+    /**
+     * Outputs some statistics
+     *
+     * @param int $success
+     * @param int $count
+     * @return void
+     */
+    protected function printStats(int $success, int $count): void
+    {
+        $time = (hrtime(true) - $this->init_time) / 1_000_000;
+        $ram = (memory_get_peak_usage(true) - $this->init_ram) / 1024 / 1024;
+        printf('Converted %d of %d in %.3f ms using %.3f MiB RAM', $success, $count, $time, $ram);
     }
 
     /**
