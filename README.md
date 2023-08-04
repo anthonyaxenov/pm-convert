@@ -23,12 +23,11 @@ These formats are supported for now: `http`, `curl`, `wget`.
 ## Planned features
 
 - support as many as possible/necessary of authentication kinds (_currently no ones_);
-- support as many as possible/necessary of body formats (_currently json and formdata_);
+- support as many as possible/necessary of body formats (_currently only `json` and `formdata`_);
 - documentation generation support (markdown) with responce examples (if present);
 - maybe some another convert formats (like httpie or something...);
 - replace `{{vars}}` from folder;
 - replace `{{vars}}` from environment;
-- performance measurement;
 - better logging;
 - tests, phpcs, psalm, etc.;
 - web version.

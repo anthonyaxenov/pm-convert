@@ -22,12 +22,12 @@ class Processor
     /**
      * Converter version
      */
-    public const VERSION = '1.0.0';
+    public const VERSION = '1.1.0';
 
     /**
      * @var string[] Paths to collection files
      */
-    protected array $collectionPaths;
+    protected array $collectionPaths = [];
 
     /**
      * @var string Output path where to put results in
@@ -52,7 +52,17 @@ class Processor
     /**
      * @var object[] Collections that will be converted into choosen formats
      */
-    protected array $collections;
+    protected array $collections = [];
+
+    /**
+     * @var int Initial timestamp
+     */
+    protected int $init_time;
+
+    /**
+     * @var int Initial RAM usage
+     */
+    protected int $init_ram;
 
     /**
      * Constructor
@@ -61,6 +71,8 @@ class Processor
      */
     public function __construct(protected array $argv)
     {
+        $this->init_time = hrtime(true);
+        $this->init_ram = memory_get_usage(true);
     }
 
     /**
@@ -80,7 +92,7 @@ class Processor
             switch ($arg) {
                 case '-f':
                 case '--file':
-                    $path = $this->argv[$idx + 1];
+                    $path = FileSystem::normalizePath($this->argv[$idx + 1]);
                     if (empty($path) || !str_ends_with($path, '.json') || !file_exists($path) || !is_readable($path)) {
                         throw new InvalidArgumentException('a valid json-file path is expected for -f (--file)');
                     }
@@ -99,13 +111,11 @@ class Processor
                         throw new InvalidArgumentException('a directory path is expected for -d (--dir)');
                     }
                     $path = $this->argv[$idx + 1];
-                    if (FileSystem::checkDir($path)) {
-                        $files = array_filter(
-                            FileSystem::dirContents($path),
-                            static fn($filename) => str_ends_with($filename, '.json')
-                        );
-                        $this->collectionPaths = array_unique(array_merge($this?->collectionPaths ?? [], $files));
-                    }
+                    $files = array_filter(
+                        FileSystem::dirContents($path),
+                        static fn($filename) => str_ends_with($filename, '.json')
+                    );
+                    $this->collectionPaths = array_unique(array_merge($this?->collectionPaths ?? [], $files));
                     break;
                 case '-p':
                 case '--preserve':
@@ -127,6 +137,9 @@ class Processor
                 case '--help':
                     die(implode(PHP_EOL, $this->usage()) . PHP_EOL);
             }
+        }
+        if (empty($this->collectionPaths)) {
+            throw new InvalidArgumentException('there are no collections to convert');
         }
         if (empty($this->formats)) {
             $this->formats = [ConvertFormat::Http->name => ConvertFormat::Http];
@@ -180,22 +193,43 @@ class Processor
      *
      * @throws Exception
      */
-    public function start(): void
+    public function convert(): void
     {
         $this->parseArgs();
         $this->initOutputDirectory();
         $this->initConverters();
         $this->initCollections();
+        $count = count($this->collections);
+        $current = 1;
+        $success = 0;
         print(implode(PHP_EOL, array_merge($this->version(), $this->copyright())) . PHP_EOL . PHP_EOL);
         foreach ($this->collections as $collectionName => $collection) {
-            print("Converting '$collectionName':" . PHP_EOL);
+            printf("Converting '%s' (%d/%d):%s", $collectionName, $current, $count, PHP_EOL);
             foreach ($this->converters as $type => $exporter) {
-                print("\t-> " . strtolower($type));
+                printf(' > %s', strtolower($type));
                 $outputPath = sprintf('%s%s%s', $this->outputPath, DIRECTORY_SEPARATOR, $collectionName);
                 $exporter->convert($collection, $outputPath);
-                printf("\t- OK: %s%s", $exporter->getOutputPath(), PHP_EOL);
+                printf(' - OK: %s%s', $exporter->getOutputPath(), PHP_EOL);
             }
+            print(PHP_EOL);
+            ++$current;
+            ++$success;
         }
+        $this->printStats($success, $current);
+    }
+
+    /**
+     * Outputs some statistics
+     *
+     * @param int $success
+     * @param int $count
+     * @return void
+     */
+    protected function printStats(int $success, int $count): void
+    {
+        $time = (hrtime(true) - $this->init_time) / 1_000_000;
+        $ram = (memory_get_peak_usage(true) - $this->init_ram) / 1024 / 1024;
+        printf('Converted %d of %d in %.3f ms using %.3f MiB RAM', $success, $count, $time, $ram);
     }
 
     /**
