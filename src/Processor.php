@@ -27,7 +27,7 @@ class Processor
     /**
      * @var string[] Paths to collection files
      */
-    protected array $collectionPaths;
+    protected array $collectionPaths = [];
 
     /**
      * @var string Output path where to put results in
@@ -52,7 +52,7 @@ class Processor
     /**
      * @var object[] Collections that will be converted into choosen formats
      */
-    protected array $collections;
+    protected array $collections = [];
 
     /**
      * Constructor
@@ -80,7 +80,7 @@ class Processor
             switch ($arg) {
                 case '-f':
                 case '--file':
-                    $path = $this->argv[$idx + 1];
+                    $path = FileSystem::normalizePath($this->argv[$idx + 1]);
                     if (empty($path) || !str_ends_with($path, '.json') || !file_exists($path) || !is_readable($path)) {
                         throw new InvalidArgumentException('a valid json-file path is expected for -f (--file)');
                     }
@@ -99,13 +99,11 @@ class Processor
                         throw new InvalidArgumentException('a directory path is expected for -d (--dir)');
                     }
                     $path = $this->argv[$idx + 1];
-                    if (FileSystem::checkDir($path)) {
-                        $files = array_filter(
-                            FileSystem::dirContents($path),
-                            static fn($filename) => str_ends_with($filename, '.json')
-                        );
-                        $this->collectionPaths = array_unique(array_merge($this?->collectionPaths ?? [], $files));
-                    }
+                    $files = array_filter(
+                        FileSystem::dirContents($path),
+                        static fn($filename) => str_ends_with($filename, '.json')
+                    );
+                    $this->collectionPaths = array_unique(array_merge($this?->collectionPaths ?? [], $files));
                     break;
                 case '-p':
                 case '--preserve':
@@ -127,6 +125,9 @@ class Processor
                 case '--help':
                     die(implode(PHP_EOL, $this->usage()) . PHP_EOL);
             }
+        }
+        if (empty($this->collectionPaths)) {
+            throw new InvalidArgumentException('there are no collections to convert');
         }
         if (empty($this->formats)) {
             $this->formats = [ConvertFormat::Http->name => ConvertFormat::Http];

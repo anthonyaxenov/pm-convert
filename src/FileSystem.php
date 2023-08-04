@@ -65,13 +65,13 @@ class FileSystem
     {
         $path = static::normalizePath($path);
         if (!file_exists($path)) {
-            throw new DirectoryNotExistsException("output directory is not exist: $path");
+            throw new DirectoryNotExistsException("directory does not exist: $path");
         }
         if (!is_readable($path)) {
-            throw new DirectoryIsNotReadableException("output directory permissions are not valid: $path");
+            throw new DirectoryIsNotReadableException("directory permissions are not valid: $path");
         }
         if (!is_writable($path)) {
-            throw new DirectoryIsNotWriteableException("output directory permissions are not valid: $path");
+            throw new DirectoryIsNotWriteableException("directory permissions are not valid: $path");
         }
         return true;
     }
