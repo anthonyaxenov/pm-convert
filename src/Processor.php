@@ -92,47 +92,58 @@ class Processor
             switch ($arg) {
                 case '-f':
                 case '--file':
-                    $path = FileSystem::normalizePath($this->argv[$idx + 1]);
-                    if (empty($path) || !str_ends_with($path, '.json') || !file_exists($path) || !is_readable($path)) {
-                        throw new InvalidArgumentException('a valid json-file path is expected for -f (--file)');
+                    $rawpath = $this->argv[$idx + 1];
+                    $normpath = FileSystem::normalizePath($rawpath);
+                    if (!FileSystem::isCollectionFile($normpath)) {
+                        throw new InvalidArgumentException(
+                            sprintf("this is not a valid collection file:%s\t%s %s", PHP_EOL, $arg, $rawpath)
+                        );
                     }
                     $this->collectionPaths[] = $this->argv[$idx + 1];
                     break;
+
                 case '-o':
                 case '--output':
                     if (empty($this->argv[$idx + 1])) {
-                        throw new InvalidArgumentException('-o expected');
+                        throw new InvalidArgumentException('-o is required');
                     }
                     $this->outputPath = $this->argv[$idx + 1];
                     break;
+
                 case '-d':
                 case '--dir':
                     if (empty($this->argv[$idx + 1])) {
                         throw new InvalidArgumentException('a directory path is expected for -d (--dir)');
                     }
-                    $path = $this->argv[$idx + 1];
+                    $normpath = $this->argv[$idx + 1];
                     $files = array_filter(
-                        FileSystem::dirContents($path),
-                        static fn($filename) => str_ends_with($filename, '.json')
+                        FileSystem::dirContents($normpath),
+                        static fn($filename) => FileSystem::isCollectionFile($filename)
                     );
                     $this->collectionPaths = array_unique(array_merge($this?->collectionPaths ?? [], $files));
                     break;
+
                 case '-p':
                 case '--preserve':
                     $this->preserveOutput = true;
                     break;
+
                 case '--http':
                     $this->formats[ConvertFormat::Http->name] = ConvertFormat::Http;
                     break;
+
                 case '--curl':
                     $this->formats[ConvertFormat::Curl->name] = ConvertFormat::Curl;
                     break;
+
                 case '--wget':
                     $this->formats[ConvertFormat::Wget->name] = ConvertFormat::Wget;
                     break;
+
                 case '-v':
                 case '--version':
                     die(implode(PHP_EOL, $this->version()) . PHP_EOL);
+
                 case '-h':
                 case '--help':
                     die(implode(PHP_EOL, $this->usage()) . PHP_EOL);
