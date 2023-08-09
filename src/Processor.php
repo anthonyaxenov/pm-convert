@@ -200,10 +200,11 @@ class Processor
         $this->initConverters();
         $this->initCollections();
         $count = count($this->collections);
-        $current = 1;
+        $current = 0;
         $success = 0;
         print(implode(PHP_EOL, array_merge($this->version(), $this->copyright())) . PHP_EOL . PHP_EOL);
         foreach ($this->collections as $collectionName => $collection) {
+            ++$current;
             printf("Converting '%s' (%d/%d):%s", $collectionName, $current, $count, PHP_EOL);
             foreach ($this->converters as $type => $exporter) {
                 printf(' > %s', strtolower($type));
@@ -212,7 +213,6 @@ class Processor
                 printf(' - OK: %s%s', $exporter->getOutputPath(), PHP_EOL);
             }
             print(PHP_EOL);
-            ++$current;
             ++$success;
         }
         $this->printStats($success, $current);
