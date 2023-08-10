@@ -218,10 +218,10 @@ class Processor
             ++$current;
             printf("Converting '%s' (%d/%d):%s", $collectionName, $current, $count, PHP_EOL);
             foreach ($this->converters as $type => $exporter) {
-                printf(' > %s', strtolower($type));
+                printf('> %s%s', strtolower($type), PHP_EOL);
                 $outputPath = sprintf('%s%s%s', $this->outputPath, DIRECTORY_SEPARATOR, $collectionName);
                 $exporter->convert($collection, $outputPath);
-                printf(' - OK: %s%s', $exporter->getOutputPath(), PHP_EOL);
+                printf('  OK: %s%s', $exporter->getOutputPath(), PHP_EOL);
             }
             print(PHP_EOL);
             ++$success;
