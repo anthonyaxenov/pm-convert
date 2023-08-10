@@ -82,7 +82,7 @@ abstract class AbstractConverter
      */
     protected function initRequest(object $item): RequestContract
     {
-        $request_class = static::REQUEST;
+        $request_class = static::REQUEST_CLASS;
         $result = new $request_class();
         $result->setName($item->name);
         $result->setDescription($item->request?->description ?? null);

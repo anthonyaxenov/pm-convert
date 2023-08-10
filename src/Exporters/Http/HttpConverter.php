@@ -11,7 +11,8 @@ use PmConverter\Exporters\{
 class HttpConverter extends AbstractConverter implements ConverterContract
 {
     protected const FILE_EXT = 'http';
+
     protected const OUTPUT_DIR = 'http';
 
-    protected const REQUEST = HttpRequest::class;
+    protected const REQUEST_CLASS = HttpRequest::class;
 }
