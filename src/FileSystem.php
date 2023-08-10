@@ -10,8 +10,17 @@ use PmConverter\Exceptions\{
     DirectoryIsNotWriteableException,
     DirectoryNotExistsException};
 
+/**
+ * Helper class to work with files and directories
+ */
 class FileSystem
 {
+    /**
+     * Normalizes a given path
+     *
+     * @param string $path
+     * @return string
+     */
     public static function normalizePath(string $path): string
     {
         $path = str_replace('~', $_SERVER['HOME'], $path);
@@ -19,6 +28,8 @@ class FileSystem
     }
 
     /**
+     * Recursively creates a new directory by given path
+     *
      * @param string $path
      * @return string
      * @throws CannotCreateDirectoryException
@@ -38,6 +49,8 @@ class FileSystem
     }
 
     /**
+     * Recursively removes a given directory
+     *
      * @param string $path
      * @return void
      * @throws DirectoryIsNotReadableException
@@ -77,11 +90,10 @@ class FileSystem
     }
 
     /**
+     * Returns content of given directory path
+     *
      * @param string $path
      * @return array
-     * @throws DirectoryIsNotReadableException
-     * @throws DirectoryIsNotWriteableException
-     * @throws DirectoryNotExistsException
      */
     public static function dirContents(string $path): array
     {
@@ -91,5 +103,23 @@ class FileSystem
             $record = sprintf('%s%s%s', $path, DIRECTORY_SEPARATOR, $record);
         }
         return $records;
+    }
+
+    /**
+     * Checks if a given file is a valid collection json file
+     *
+     * @param string $path
+     * @return bool
+     */
+    public static function isCollectionFile(string $path): bool
+    {
+        $path = static::normalizePath($path);
+        return !empty($path = trim($path))
+            && str_ends_with($path, '.postman_collection.json')
+            && file_exists($path)
+            && is_readable($path)
+            && ($json = json_decode(file_get_contents($path), true))
+            && json_last_error() === JSON_ERROR_NONE
+            && isset($json['collection']['info']['name']);
     }
 }
