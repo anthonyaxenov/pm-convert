@@ -22,7 +22,7 @@ class Processor
     /**
      * Converter version
      */
-    public const VERSION = '1.2.1';
+    public const VERSION = '1.2.2';
 
     /**
      * @var string[] Paths to collection files
@@ -229,6 +229,9 @@ class Processor
      */
     protected function initEnv(): void
     {
+        if (!isset($this->envFile)) {
+            return;
+        }
         $content = file_get_contents(FileSystem::normalizePath($this->envFile));
         $content = json_decode($content, flags: JSON_THROW_ON_ERROR);
         if (!property_exists($content, 'environment') || empty($content?->environment)) {
