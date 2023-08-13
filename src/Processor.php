@@ -7,16 +7,15 @@ namespace PmConverter;
 use Exception;
 use InvalidArgumentException;
 use JsonException;
-use PmConverter\Exceptions\CannotCreateDirectoryException;
-use PmConverter\Exceptions\DirectoryIsNotReadableException;
-use PmConverter\Exceptions\DirectoryIsNotWriteableException;
-use PmConverter\Exceptions\DirectoryNotExistsException;
-use PmConverter\Exporters\ConverterContract;
-use PmConverter\Exporters\ConvertFormat;
+use PmConverter\Exceptions\{
+    CannotCreateDirectoryException,
+    DirectoryIsNotReadableException,
+    DirectoryIsNotWriteableException,
+    DirectoryNotExistsException};
+use PmConverter\Exporters\{
+    ConverterContract,
+    ConvertFormat};
 
-/**
- *
- */
 class Processor
 {
     /**
@@ -89,9 +88,6 @@ class Processor
      * Parses an array of arguments came from cli
      *
      * @return void
-     * @throws DirectoryIsNotWriteableException
-     * @throws DirectoryNotExistsException
-     * @throws DirectoryIsNotReadableException
      */
     protected function parseArgs(): void
     {
@@ -285,7 +281,7 @@ class Processor
     {
         $time = (hrtime(true) - $this->initTime) / 1_000_000;
         $ram = (memory_get_peak_usage(true) - $this->initRam) / 1024 / 1024;
-        printf('Converted %d of %d in %.3f ms using %.3f MiB RAM', $success, $count, $time, $ram);
+        printf('Converted %d of %d in %.3f ms using %.3f MiB RAM%s', $success, $count, $time, $ram, PHP_EOL);
     }
 
     /**
@@ -321,7 +317,7 @@ class Processor
             '',
             'Possible ARGUMENTS:',
             "\t-f, --file       - a PATH to single collection located in PATH to convert from",
-            "\t-d, --dir        - a directory with collections located in COLLECTION_FILEPATH to convert from",
+            "\t-d, --dir        - a directory with collections located in PATH to convert from",
             "\t-o, --output     - a directory OUTPUT_PATH to put results in",
             "\t-e, --env        - use environment file with variable values to replace in request",
             "\t-p, --preserve   - do not delete OUTPUT_PATH (if exists)",
@@ -341,6 +337,7 @@ class Processor
             "\t--http   - generate raw *.http files (default)",
             "\t--curl   - generate shell scripts with curl command",
             "\t--wget   - generate shell scripts with wget command",
+            '',
             'If no FORMATS specified then --http implied.',
             'Any of FORMATS can be specified at the same time.',
             '',

@@ -32,7 +32,7 @@ These formats are supported for now: `http`, `curl`, `wget`.
 - tests, phpcs, psalm, etc.;
 - web version.
 
-## Installation
+## Install and upgrade
 
 ```
 composer global r axenov/pm-convert

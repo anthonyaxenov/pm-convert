@@ -1,7 +1,7 @@
 {
     "name": "axenov/pm-convert",
     "type": "library",
-    "description": "Postman collection coverter",
+    "description": "Postman collection converter",
     "license": "MIT",
     "homepage": "https://axenov.dev/",
     "authors": [
