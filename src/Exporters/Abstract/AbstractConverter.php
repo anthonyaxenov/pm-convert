@@ -173,7 +173,7 @@ abstract class AbstractConverter implements ConverterContract
      */
     protected function interpolate(string $content): string
     {
-        if (empty($this->vars) && $this->env->hasVars()) {
+        if (empty($this->vars) && !empty($this->env) && $this->env->hasVars()) {
             return $content;
         }
         $matches = [];
