@@ -22,7 +22,7 @@ class Processor
     /**
      * Converter version
      */
-    public const VERSION = '1.2.2';
+    public const VERSION = '1.2.3';
 
     /**
      * @var string[] Paths to collection files
