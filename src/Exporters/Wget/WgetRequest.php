@@ -53,7 +53,7 @@ class WgetRequest extends AbstractRequest
                 $output[] = http_build_query($params);
                 return $output;
             default:
-                return ["\t$this->body"];
+                return ["\t'$this->body' \ "];
         }
     }
 
@@ -75,7 +75,6 @@ class WgetRequest extends AbstractRequest
             $this->prepareHeaders(),
             $this->prepareBody()
         );
-        $output[] = rtrim(array_pop($output), '\ ');
         $output[] = "\t'$this->url'";
         return implode(PHP_EOL, array_merge($output, ['']));
     }
