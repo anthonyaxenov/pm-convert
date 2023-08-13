@@ -32,9 +32,9 @@ abstract class AbstractConverter implements ConverterContract
     protected array $vars = [];
 
     /**
-     * @var Environment
+     * @var Environment|null
      */
-    protected Environment $env;
+    protected ?Environment $env = null;
 
     /**
      * Sets an environment with vars
@@ -173,11 +173,11 @@ abstract class AbstractConverter implements ConverterContract
      */
     protected function interpolate(string $content): string
     {
-        if (empty($this->vars) && !empty($this->env) && $this->env->hasVars()) {
+        if (empty($this->vars) && !$this->env?->hasVars()) {
             return $content;
         }
         $matches = [];
-        if (preg_match_all('/\{\{[a-zA-Z][a-zA-Z0-9]+}}/', $content, $matches, PREG_PATTERN_ORDER) > 0) {
+        if (preg_match_all('/\{\{[a-zA-Z][a-zA-Z0-9]*}}/m', $content, $matches, PREG_PATTERN_ORDER) > 0) {
             foreach ($matches[0] as $key => $var) {
                 if (str_contains($content, $var)) {
                     $content = str_replace($var, $this->vars[$var] ?? $this->env[$var] ?? $var, $content);
