@@ -1,7 +1,7 @@
 #!/usr/bin/env php
 <?php
 
-declare(strict_types = 1);
+declare(strict_types=1);
 
 use PmConverter\Processor;
 
@@ -20,8 +20,13 @@ foreach ($paths as $path) {
 
 is_null($file) && throw new RuntimeException('Unable to locate autoload.php file.');
 
+$processor = new Processor($argv);
 try {
-    (new Processor($argv))->convert();
+    $processor->convert();
+} catch (InvalidArgumentException $e) {
+    fwrite(STDERR, sprintf('ERROR: %s%s', $e->getMessage(), PHP_EOL));
+    print(implode(PHP_EOL, $processor->usage()));
+    die(1);
 } catch (Exception $e) {
     fwrite(STDERR, sprintf('ERROR: %s%s', $e->getMessage(), PHP_EOL));
     die(1);
