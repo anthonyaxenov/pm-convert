@@ -22,7 +22,7 @@ class Processor
     /**
      * Converter version
      */
-    public const VERSION = '1.2.0';
+    public const VERSION = '1.2.1';
 
     /**
      * @var string[] Paths to collection files
@@ -167,6 +167,9 @@ class Processor
         if (empty($this->collectionPaths)) {
             throw new InvalidArgumentException('there are no collections to convert');
         }
+        if (empty($this->outputPath)) {
+            throw new InvalidArgumentException('-o is required');
+        }
         if (empty($this->formats)) {
             $this->formats = [ConvertFormat::Http->name => ConvertFormat::Http];
         }
@@ -285,7 +288,7 @@ class Processor
     /**
      * @return string[]
      */
-    protected function version(): array
+    public function version(): array
     {
         return ["Postman collection converter v" . self::VERSION];
     }
@@ -293,7 +296,7 @@ class Processor
     /**
      * @return string[]
      */
-    protected function copyright(): array
+    public function copyright(): array
     {
         return [
             'Anthony Axenov (c) ' . date('Y') . ", MIT license",
@@ -304,7 +307,7 @@ class Processor
     /**
      * @return array
      */
-    protected function usage(): array
+    public function usage(): array
     {
         return array_merge($this->version(), [
             'Usage:',
