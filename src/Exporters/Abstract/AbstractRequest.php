@@ -8,14 +8,14 @@ use PmConverter\Exporters\Http\HttpRequest;
 use PmConverter\Exporters\RequestContract;
 
 /**
- *
+ * Class to determine file content with any request format
  */
 abstract class AbstractRequest implements RequestContract
 {
     /**
      * @var string
      */
-    protected string $http = 'HTTP/1.1'; //TODO verb
+    protected string $http = 'HTTP/1.1'; //TODO proto
 
     /**
      * @var string
@@ -53,6 +53,8 @@ abstract class AbstractRequest implements RequestContract
     protected string $url;
 
     /**
+     * Sets name from collection item to request object
+     *
      * @param string $name
      * @return HttpRequest
      */
@@ -63,6 +65,8 @@ abstract class AbstractRequest implements RequestContract
     }
 
     /**
+     * Returns name of request
+     *
      * @return string
      */
     public function getName(): string
@@ -71,6 +75,8 @@ abstract class AbstractRequest implements RequestContract
     }
 
     /**
+     * Sets description from collection item to request object
+     *
      * @param string|null $description
      * @return HttpRequest
      */
@@ -81,6 +87,8 @@ abstract class AbstractRequest implements RequestContract
     }
 
     /**
+     * Sets HTTP verb from collection item to request object
+     *
      * @param string $verb
      * @return HttpRequest
      */
@@ -91,6 +99,8 @@ abstract class AbstractRequest implements RequestContract
     }
 
     /**
+     * Sets URL from collection item to request object
+     *
      * @param string $url
      * @return HttpRequest
      */
@@ -101,6 +111,8 @@ abstract class AbstractRequest implements RequestContract
     }
 
     /**
+     * Sets headers from collection item to request object
+     *
      * @param object[]|null $headers
      * @return $this
      */
@@ -116,6 +128,32 @@ abstract class AbstractRequest implements RequestContract
     }
 
     /**
+     * Sets authorization headers
+     *
+     * @param object|null $auth
+     * @return $this
+     */
+    public function setAuth(?object $auth): static
+    {
+        if (!empty($auth)) {
+            switch ($auth->type) {
+                case 'bearer':
+                    $this->headers['Authorization'] = [
+                        'value' => 'Bearer ' . $auth->{$auth->type}[0]->value,
+                        'disabled' => false,
+                    ];
+                    break;
+                default:
+                    break;
+            }
+        }
+        return $this;
+    }
+
+
+    /**
+     * Sets body mode from collection item to request object
+     *
      * @param string $bodymode
      * @return HttpRequest
      */
@@ -126,8 +164,10 @@ abstract class AbstractRequest implements RequestContract
     }
 
     /**
-     * @param string $body
-     * @return HttpRequest
+     * Sets body from collection item to request object
+     *
+     * @param object $body
+     * @return $this
      */
     public function setBody(object $body): static
     {
@@ -153,11 +193,29 @@ abstract class AbstractRequest implements RequestContract
     }
 
     /**
-     * @return string
+     * Returns array of description lines
+     *
+     * @return array
      */
-    abstract protected function prepareBody(): ?string;
+    abstract protected function prepareDescription(): array;
 
     /**
+     * Returns array of headers
+     *
+     * @return array
+     */
+    abstract protected function prepareHeaders(): array;
+
+    /**
+     * Returns array of request body lines
+     *
+     * @return array
+     */
+    abstract protected function prepareBody(): array;
+
+    /**
+     * Converts request object to string to be written in result file
+     *
      * @return string
      */
     abstract public function __toString(): string;
