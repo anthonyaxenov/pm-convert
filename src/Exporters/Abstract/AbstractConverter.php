@@ -5,14 +5,16 @@ declare(strict_types=1);
 namespace PmConverter\Exporters\Abstract;
 
 use Exception;
+use PmConverter\Environment;
 use PmConverter\Exporters\{
+    ConverterContract,
     RequestContract};
 use PmConverter\FileSystem;
 
 /**
  *
  */
-abstract class AbstractConverter
+abstract class AbstractConverter implements ConverterContract
 {
     /**
      * @var object|null
@@ -25,6 +27,30 @@ abstract class AbstractConverter
     protected string $outputPath;
 
     /**
+     * @var string[]
+     */
+    protected array $vars = [];
+
+    /**
+     * @var Environment
+     */
+    protected Environment $env;
+
+    /**
+     * Sets an environment with vars
+     *
+     * @param Environment $env
+     * @return $this
+     */
+    public function withEnv(Environment $env): static
+    {
+        $this->env = $env;
+        return $this;
+    }
+
+    /**
+     * Converts collection requests
+     *
      * @throws Exception
      */
     public function convert(object $collection, string $outputPath): void
@@ -32,12 +58,30 @@ abstract class AbstractConverter
         $outputPath = sprintf('%s%s%s', $outputPath, DIRECTORY_SEPARATOR, static::OUTPUT_DIR);
         $this->outputPath = FileSystem::makeDir($outputPath);
         $this->collection = $collection;
+        $this->setVariables();
         foreach ($collection->item as $item) {
             $this->convertItem($item);
         }
     }
 
     /**
+     * Prepares collection variables
+     *
+     * @return $this
+     */
+    protected function setVariables(): static
+    {
+        if ($this->collection->variable) {
+            foreach ($this->collection->variable as $var) {
+                $this->vars["{{{$var->key}}}"] = $var->value;
+            }
+        }
+        return $this;
+    }
+
+    /**
+     * Returns output path
+     *
      * @return string
      */
     public function getOutputPath(): string
@@ -46,6 +90,8 @@ abstract class AbstractConverter
     }
 
     /**
+     * Checks whether item contains another items or not
+     *
      * @param object $item
      * @return bool
      */
@@ -55,6 +101,8 @@ abstract class AbstractConverter
     }
 
     /**
+     * Converts an item to request object and writes it into file
+     *
      * @throws Exception
      */
     protected function convertItem(mixed $item): void
@@ -77,18 +125,23 @@ abstract class AbstractConverter
     }
 
     /**
+     * Initialiazes request object to be written in file
+     *
      * @param object $item
      * @return RequestContract
      */
     protected function initRequest(object $item): RequestContract
     {
         $request_class = static::REQUEST_CLASS;
-        $result = new $request_class();
+
+        /** @var RequestContract $result */
+        $result = new $request_class($this->vars);
         $result->setName($item->name);
         $result->setDescription($item->request?->description ?? null);
         $result->setVerb($item->request->method);
         $result->setUrl($item->request->url->raw);
         $result->setHeaders($item->request->header);
+        $result->setAuth($item->request?->auth ?? $this->collection?->auth ?? null);
         if ($item->request->method !== 'GET' && !empty($item->request->body)) {
             $result->setBody($item->request->body);
         }
@@ -96,6 +149,8 @@ abstract class AbstractConverter
     }
 
     /**
+     * Writes converted request object to file
+     *
      * @param RequestContract $request
      * @param string|null $subpath
      * @return bool
@@ -106,6 +161,33 @@ abstract class AbstractConverter
         $filedir = sprintf('%s%s%s', $this->outputPath, DIRECTORY_SEPARATOR, $subpath);
         $filedir = FileSystem::makeDir($filedir);
         $filepath = sprintf('%s%s%s.%s', $filedir, DIRECTORY_SEPARATOR, $request->getName(), static::FILE_EXT);
-        return file_put_contents($filepath, (string)$request) > 0;
+        $content = $this->interpolate((string)$request);
+        return file_put_contents($filepath, $content) > 0;
+    }
+
+    /**
+     * Replaces variables in request with values from collection or environment
+     *
+     * @param string $content
+     * @return string
+     */
+    protected function interpolate(string $content): string
+    {
+        if (empty($this->vars) && $this->env->hasVars()) {
+            return $content;
+        }
+        $matches = [];
+        if (preg_match_all('/\{\{[a-zA-Z][a-zA-Z0-9]+}}/', $content, $matches, PREG_PATTERN_ORDER) > 0) {
+            foreach ($matches[0] as $key => $var) {
+                if (str_contains($content, $var)) {
+                    $content = str_replace($var, $this->vars[$var] ?? $this->env[$var] ?? $var, $content);
+                    unset($matches[0][$key]);
+                }
+            }
+        }
+        // if (!empty($matches[0])) {
+        //     fwrite(STDERR, sprintf('  No values found: %s%s', implode(', ', $matches[0]), PHP_EOL));
+        // }
+        return $content;
     }
 }

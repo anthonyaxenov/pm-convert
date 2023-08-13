@@ -1,0 +1,65 @@
+<?php
+
+declare(strict_types=1);
+
+namespace PmConverter;
+
+class Environment implements \ArrayAccess
+{
+    /**
+     * @var array
+     */
+    protected array $vars = [];
+
+    /**
+     * @param object $env
+     */
+    public function __construct(protected object $env)
+    {
+        foreach ($env->values as $var) {
+            $this->vars["{{{$var->key}}}"] = $var->value;
+        }
+    }
+
+    /**
+     * Tells if there are some vars or not
+     *
+     * @return bool
+     */
+    public function hasVars(): bool
+    {
+        return !empty($this->vars);
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function offsetExists(mixed $offset): bool
+    {
+        return array_key_exists($offset, $this->vars);
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function offsetGet(mixed $offset): mixed
+    {
+        return $this->vars[$offset];
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function offsetSet(mixed $offset, mixed $value): void
+    {
+        $this->vars[$offset] = $value;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function offsetUnset(mixed $offset): void
+    {
+        unset($this->vars[$offset]);
+    }
+}

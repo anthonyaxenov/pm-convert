@@ -57,12 +57,22 @@ class Processor
     /**
      * @var int Initial timestamp
      */
-    protected int $init_time;
+    protected int $initTime;
 
     /**
      * @var int Initial RAM usage
      */
-    protected int $init_ram;
+    protected int $initRam;
+
+    /**
+     * @var string
+     */
+    protected string $envFile;
+
+    /**
+     * @var Environment
+     */
+    protected Environment $env;
 
     /**
      * Constructor
@@ -71,8 +81,8 @@ class Processor
      */
     public function __construct(protected array $argv)
     {
-        $this->init_time = hrtime(true);
-        $this->init_ram = memory_get_usage(true);
+        $this->initTime = hrtime(true);
+        $this->initRam = memory_get_usage(true);
     }
 
     /**
@@ -115,12 +125,17 @@ class Processor
                     if (empty($this->argv[$idx + 1])) {
                         throw new InvalidArgumentException('a directory path is expected for -d (--dir)');
                     }
-                    $normpath = $this->argv[$idx + 1];
+                    $rawpath = $this->argv[$idx + 1];
                     $files = array_filter(
-                        FileSystem::dirContents($normpath),
+                        FileSystem::dirContents($rawpath),
                         static fn($filename) => FileSystem::isCollectionFile($filename)
                     );
                     $this->collectionPaths = array_unique(array_merge($this?->collectionPaths ?? [], $files));
+                    break;
+
+                case '-e':
+                case '--env':
+                    $this->envFile = FileSystem::normalizePath($this->argv[$idx + 1]);
                     break;
 
                 case '-p':
@@ -158,6 +173,8 @@ class Processor
     }
 
     /**
+     * Initializes output directory
+     *
      * @return void
      * @throws CannotCreateDirectoryException
      * @throws DirectoryIsNotWriteableException
@@ -185,6 +202,8 @@ class Processor
     }
 
     /**
+     * Initializes collection objects
+     *
      * @throws JsonException
      */
     protected function initCollections(): void
@@ -200,6 +219,22 @@ class Processor
     }
 
     /**
+     * Initializes environment object
+     *
+     * @return void
+     * @throws JsonException
+     */
+    protected function initEnv(): void
+    {
+        $content = file_get_contents(FileSystem::normalizePath($this->envFile));
+        $content = json_decode($content, flags: JSON_THROW_ON_ERROR);
+        if (!property_exists($content, 'environment') || empty($content?->environment)) {
+            throw new JsonException("not a valid environment: $this->envFile");
+        }
+        $this->env = new Environment($content->environment);
+    }
+
+    /**
      * Begins a conversion
      *
      * @throws Exception
@@ -210,6 +245,7 @@ class Processor
         $this->initOutputDirectory();
         $this->initConverters();
         $this->initCollections();
+        $this->initEnv();
         $count = count($this->collections);
         $current = 0;
         $success = 0;
@@ -220,6 +256,9 @@ class Processor
             foreach ($this->converters as $type => $exporter) {
                 printf('> %s%s', strtolower($type), PHP_EOL);
                 $outputPath = sprintf('%s%s%s', $this->outputPath, DIRECTORY_SEPARATOR, $collectionName);
+                if (!empty($this->env)) {
+                    $exporter->withEnv($this->env);
+                }
                 $exporter->convert($collection, $outputPath);
                 printf('  OK: %s%s', $exporter->getOutputPath(), PHP_EOL);
             }
@@ -238,8 +277,8 @@ class Processor
      */
     protected function printStats(int $success, int $count): void
     {
-        $time = (hrtime(true) - $this->init_time) / 1_000_000;
-        $ram = (memory_get_peak_usage(true) - $this->init_ram) / 1024 / 1024;
+        $time = (hrtime(true) - $this->initTime) / 1_000_000;
+        $ram = (memory_get_peak_usage(true) - $this->initRam) / 1024 / 1024;
         printf('Converted %d of %d in %.3f ms using %.3f MiB RAM', $success, $count, $time, $ram);
     }
 
@@ -278,16 +317,19 @@ class Processor
             "\t-f, --file       - a PATH to single collection located in PATH to convert from",
             "\t-d, --dir        - a directory with collections located in COLLECTION_FILEPATH to convert from",
             "\t-o, --output     - a directory OUTPUT_PATH to put results in",
+            "\t-e, --env        - use environment file with variable values to replace in request",
             "\t-p, --preserve   - do not delete OUTPUT_PATH (if exists)",
             "\t-h, --help       - show this help message and exit",
             "\t-v, --version    - show version info and exit",
             '',
             'If no ARGUMENTS passed then --help implied.',
-            'If both -c and -d are specified then only unique set of files will be converted.',
+            'If both -f and -d are specified then only unique set of files will be converted.',
             '-f or -d are required to be specified at least once, but each may be specified multiple times.',
             'PATH must be a valid path to readable json-file or directory.',
             'OUTPUT_PATH must be a valid path to writeable directory.',
             'If -o is specified several times then only last one will be used.',
+            'If -e is specified several times then only last one will be used.',
+            'If -e is not specified then only collection vars will be replaced (if any).',
             '',
             'Possible FORMATS:',
             "\t--http   - generate raw *.http files (default)",
@@ -301,6 +343,7 @@ class Processor
             "        -f ~/dir1/first.postman_collection.json \ ",
             "        --directory ~/team \ ",
             "        --file ~/dir2/second.postman_collection.json \ ",
+            "        --env ~/localhost.postman_environment.json \ ",
             "        -d ~/personal \ ",
             "        -o ~/postman_export ",
             "",

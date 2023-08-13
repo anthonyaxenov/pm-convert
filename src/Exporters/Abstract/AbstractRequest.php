@@ -128,6 +128,30 @@ abstract class AbstractRequest implements RequestContract
     }
 
     /**
+     * Sets authorization headers
+     *
+     * @param object|null $auth
+     * @return $this
+     */
+    public function setAuth(?object $auth): static
+    {
+        if (!empty($auth)) {
+            switch ($auth->type) {
+                case 'bearer':
+                    $this->headers['Authorization'] = [
+                        'value' => 'Bearer ' . $auth->{$auth->type}[0]->value,
+                        'disabled' => false,
+                    ];
+                    break;
+                default:
+                    break;
+            }
+        }
+        return $this;
+    }
+
+
+    /**
      * Sets body mode from collection item to request object
      *
      * @param string $bodymode
