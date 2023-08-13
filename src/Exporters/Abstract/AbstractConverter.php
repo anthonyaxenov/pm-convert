@@ -71,7 +71,7 @@ abstract class AbstractConverter implements ConverterContract
      */
     protected function setVariables(): static
     {
-        if ($this->collection->variable) {
+        if (isset($this->collection?->variable)) {
             foreach ($this->collection->variable as $var) {
                 $this->vars["{{{$var->key}}}"] = $var->value;
             }
