@@ -215,7 +215,7 @@ class AbstractRequestTest extends TestCase
      * @covers PmConverter\Converters\Abstract\AbstractRequest::setBodymode()
      * @covers PmConverter\Converters\Abstract\AbstractRequest::setHeader()
      * @covers PmConverter\Converters\Abstract\AbstractRequest::setBody()
-     * @covers PmConverter\Converters\Abstract\AbstractRequest::setJsonBody()
+     * @covers PmConverter\Converters\Abstract\AbstractRequest::setBodyAsIs()
      * @covers PmConverter\Converters\Abstract\AbstractRequest::getBody()
      * @return void
      */

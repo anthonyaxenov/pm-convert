@@ -132,19 +132,19 @@ abstract class AbstractConverter implements ConverterContract
     {
         $request_class = static::REQUEST_CLASS;
 
-        /** @var RequestContract $result */
-        $result = new $request_class();
-        $result->setName($item->name);
-        $result->setHttpVersion(1.1); //TODO http version?
-        $result->setDescription($item->request?->description ?? null);
-        $result->setVerb($item->request->method);
-        $result->setUrl($item->request->url->raw);
-        $result->setHeaders($item->request->header);
-        $result->setAuth($item->request?->auth ?? $this->collection?->auth ?? null);
+        /** @var RequestContract $request */
+        $request = new $request_class();
+        $request->setName($item->name);
+        $request->setHttpVersion(1.1); //TODO http version?
+        $request->setDescription($item->request?->description ?? null);
+        $request->setVerb($item->request->method);
+        $request->setUrl($item->request->url->raw);
+        $request->setHeaders($item->request->header);
+        $request->setAuth($item->request?->auth ?? $this->collection?->auth ?? null);
         if ($item->request->method !== 'GET' && !empty($item->request->body)) {
-            $result->setBody($item->request->body);
+            $request->setBody($item->request->body);
         }
-        return $result;
+        return $request;
     }
 
     /**
