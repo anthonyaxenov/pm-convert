@@ -2,12 +2,13 @@
 
 declare(strict_types=1);
 
-namespace PmConverter\Exporters;
+namespace PmConverter\Converters;
 
 
-use PmConverter\Exporters\Curl\CurlConverter;
-use PmConverter\Exporters\Http\HttpConverter;
-use PmConverter\Exporters\Wget\WgetConverter;
+use PmConverter\Converters\{
+    Curl\CurlConverter,
+    Http\HttpConverter,
+    Wget\WgetConverter};
 
 enum ConvertFormat: string
 {

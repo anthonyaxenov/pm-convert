@@ -89,14 +89,25 @@ Example:
         --file ~/dir2/second.postman_collection.json \ 
         --env ~/localhost.postman_environment.json \ 
         -d ~/personal \ 
-        -o ~/postman_export 
-
+        -o ~/postman_export
 ```
-### Notice
 
-Make sure every (I mean _every_) collection (not collection file), its folders and/or requests has unique names.
-If not, you can rename them in Postman or convert collections with similar names into different directories.
-Otherwise converted files may be overwritten by each other.
+### Notices
+
+1. Result of `pm-convert` execution is bunch of generated files.
+   Most likely they will contain errors such as not interpolated `{{variables}}` values (due to missed ones in collection),
+   wrong command format or `GET`s with bodies.
+   You must review any generated file before using.
+2. Make sure every (I mean _every_) collection (not collection file), its folders and/or requests has unique names.
+   If not, you can rename them in Postman or convert collections with similar names into different directories.
+   Otherwise any generated file may be accidently overwritten by another one.
+
+## How to implement a new format
+
+1. Create new namespace in `./src/Converters` and name it according to format of your choice
+2. Create two classes for converter and request object which extends `Converters\Abstract\Abstract{Converter, Request}` respectively
+3. Change constants values in your new request class according to format you want to implement
+4. Write your own logic in converter's `__toString()` method, write new methods and override abstract ones
 
 ## License
 

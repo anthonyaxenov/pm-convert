@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace PmConverter\Exporters\Http;
+namespace PmConverter\Converters\Http;
 
-use PmConverter\Exporters\{
+use PmConverter\Converters\{
     Abstract\AbstractConverter,
     ConverterContract};
 

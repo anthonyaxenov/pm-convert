@@ -2,13 +2,14 @@
 
 declare(strict_types=1);
 
-namespace PmConverter\Exporters\Abstract;
+namespace PmConverter\Converters\Abstract;
 
 use Exception;
-use PmConverter\Environment;
-use PmConverter\Exporters\{
+use PmConverter\Converters\{
     ConverterContract,
     RequestContract};
+use PmConverter\Environment;
+use PmConverter\Exceptions\InvalidHttpVersionException;
 use PmConverter\FileSystem;
 
 /**
@@ -129,14 +130,16 @@ abstract class AbstractConverter implements ConverterContract
      *
      * @param object $item
      * @return RequestContract
+     * @throws InvalidHttpVersionException
      */
     protected function initRequest(object $item): RequestContract
     {
         $request_class = static::REQUEST_CLASS;
 
         /** @var RequestContract $result */
-        $result = new $request_class($this->vars);
+        $result = new $request_class();
         $result->setName($item->name);
+        $result->setHttpVersion(1.1); //TODO http version?
         $result->setDescription($item->request?->description ?? null);
         $result->setVerb($item->request->method);
         $result->setUrl($item->request->url->raw);
