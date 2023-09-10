@@ -219,11 +219,12 @@ abstract class AbstractRequest implements Stringable, RequestContract
     {
         $this->setBodymode($body->mode);
         if ($body->mode === 'formdata') {
-            $this->setHeader('Content-Type', 'multipart/form-data')
-                ->setFormdataBody($body);
-        } elseif (!empty($body->options) && $body->options->{$this->bodymode}->language === 'json') {
-            $this->setHeader('Content-Type', 'application/json')
-                ->setJsonBody($body);
+            $this->setHeader('Content-Type', 'multipart/form-data')->setFormdataBody($body);
+        } elseif ($body->mode === 'raw') {
+            $this->setBodyAsIs($body);
+            if (!empty($body->options) && $body->options->{$this->bodymode}->language === 'json') {
+                $this->setHeader('Content-Type', 'application/json');
+            }
         }
         return $this;
     }
@@ -251,7 +252,7 @@ abstract class AbstractRequest implements Stringable, RequestContract
      * @param object $body
      * @return $this
      */
-    protected function setJsonBody(object $body): static
+    protected function setBodyAsIs(object $body): static
     {
         $this->body = $body->{$this->getBodymode()};
         return $this;
