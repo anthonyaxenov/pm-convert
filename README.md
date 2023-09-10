@@ -35,7 +35,8 @@ These formats are supported for now: `http`, `curl`, `wget`.
 ## Install and upgrade
 
 ```
-composer global r axenov/pm-convert
+composer global r axenov/pm-convert   # install
+composer global u axenov/pm-convert   # upgrade
 ```
 
 Make sure your `~/.config/composer/vendor/bin` is in `$PATH` env:
