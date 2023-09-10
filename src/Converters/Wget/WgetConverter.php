@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace PmConverter\Exporters\Wget;
+namespace PmConverter\Converters\Wget;
 
-use PmConverter\Exporters\{
+use PmConverter\Converters\{
     Abstract\AbstractConverter,
     ConverterContract};
 

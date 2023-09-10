@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace PmConverter\Exporters;
+namespace PmConverter\Converters;
 
 interface ConverterContract
 {

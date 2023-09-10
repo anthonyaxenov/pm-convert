@@ -2,9 +2,11 @@
 
 declare(strict_types=1);
 
-namespace PmConverter\Exporters\Http;
+namespace PmConverter\Converters\Http;
 
-use PmConverter\Exporters\Abstract\AbstractRequest;
+use PmConverter\Converters\Abstract\AbstractRequest;
+use PmConverter\Exceptions\{
+    EmptyHttpVerbException};
 
 /**
  * Class to determine file content with http request format
@@ -23,12 +25,13 @@ class HttpRequest extends AbstractRequest
 
     /**
      * @inheritDoc
+     * @throws EmptyHttpVerbException
      */
     protected function prepareHeaders(): array
     {
-        $output[] = "$this->verb $this->url $this->http";
-        foreach ($this->headers as $header_key => $header) {
-            $output[] = sprintf('%s%s: %s', $header['disabled'] ? '# ' : '', $header_key, $header['value']);
+        $output[] = sprintf('%s %s HTTP/%s', $this->getVerb(), $this->getUrl(), $this->getHttpVersion());
+        foreach ($this->headers as $name => $data) {
+            $output[] = sprintf('%s%s: %s', $data['disabled'] ? '# ' : '', $name, $data['value']);
         }
         return $output;
     }
@@ -38,15 +41,15 @@ class HttpRequest extends AbstractRequest
      */
     protected function prepareBody(): array
     {
-        switch ($this->bodymode) {
+        switch ($this->getBodymode()) {
             case 'formdata':
                 $output = [''];
-                foreach ($this->body as $data) {
+                foreach ($this->body as $key => $data) {
                     $output[] = sprintf(
                         '%s%s=%s',
-                        empty($data->disabled) ? '' : '# ',
-                        $data->key,
-                        $data->type === 'file' ? $data->src : $data->value
+                        empty($data['disabled']) ? '' : '# ',
+                        $key,
+                        $data['type'] === 'file' ? '@' . $data['value'] : $data['value']
                     );
                 }
                 return $output;
@@ -57,6 +60,7 @@ class HttpRequest extends AbstractRequest
 
     /**
      * @inheritDoc
+     * @throws EmptyHttpVerbException
      */
     public function __toString(): string
     {

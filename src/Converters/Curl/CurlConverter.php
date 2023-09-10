@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace PmConverter\Exporters\Curl;
+namespace PmConverter\Converters\Curl;
 
-use PmConverter\Exporters\{
+use PmConverter\Converters\{
     Abstract\AbstractConverter,
     ConverterContract};
 

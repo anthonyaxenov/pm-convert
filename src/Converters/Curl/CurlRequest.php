@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace PmConverter\Exporters\Wget;
+namespace PmConverter\Converters\Curl;
 
-use PmConverter\Exporters\Abstract\AbstractRequest;
+use PmConverter\Converters\Abstract\AbstractRequest;
 
 /**
- * Class to determine file content with wget request format
+ * Class to determine file content with curl request format
  */
-class WgetRequest extends AbstractRequest
+class CurlRequest extends AbstractRequest
 {
     /**
      * @inheritDoc
@@ -31,7 +31,7 @@ class WgetRequest extends AbstractRequest
             if ($header['disabled']) {
                 continue;
             }
-            $output[] = sprintf("\t--header '%s=%s' \ ", $header_key, $header['value']);
+            $output[] = sprintf("\t--header '%s: %s' \ ", $header_key, $header['value']);
         }
         return $output;
     }
@@ -41,20 +41,23 @@ class WgetRequest extends AbstractRequest
      */
     protected function prepareBody(): array
     {
+        $output = [];
         switch ($this->bodymode) {
             case 'formdata':
-                $params = [];
-                foreach ($this->body as $data) {
-                    if ($data->type === 'file') {
-                        continue;
-                    }
-                    $params[$data->key] = $data->value;
+                foreach ($this->body as $key => $data) {
+                    $output[] = sprintf(
+                        "%s\t--form '%s=%s' \ ",
+                        isset($data['disabled']) ? '# ' : '',
+                        $key,
+                        $data['type'] === 'file' ? "@" . $data['value'] : $data['value']
+                    );
                 }
-                $output[] = http_build_query($params);
-                return $output;
+                break;
             default:
-                return ["\t'$this->body' \ "];
+                $output = ["\t--data '$this->body'"];
+                break;
         }
+        return $output;
     }
 
     /**
@@ -66,16 +69,15 @@ class WgetRequest extends AbstractRequest
             ['#!/bin/sh'],
             $this->prepareDescription(),
             [
-                'wget \ ',
-                "\t--no-check-certificate \ ",
-                "\t--quiet \ ",
-                "\t--timeout=0 \ ",
-                "\t--method $this->verb \ ",
+                "curl \ ",
+                "\t--http1.1 \ ", //TODO proto
+                "\t--request $this->verb \ ",
+                "\t--location $this->url \ ",
             ],
             $this->prepareHeaders(),
             $this->prepareBody()
         );
-        $output[] = "\t'$this->url'";
+        $output[] = rtrim(array_pop($output), '\ ');
         return implode(PHP_EOL, array_merge($output, ['']));
     }
 }
