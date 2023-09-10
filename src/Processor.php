@@ -21,7 +21,7 @@ class Processor
     /**
      * Converter version
      */
-    public const VERSION = '1.3.0';
+    public const VERSION = '1.4.0';
 
     /**
      * @var string[] Paths to collection files
@@ -37,6 +37,11 @@ class Processor
      * @var bool Flag to remove output directories or not before conversion started
      */
     protected bool $preserveOutput = false;
+
+    /**
+     * @var string[] Additional variables
+     */
+    protected array $vars;
 
     /**
      * @var ConvertFormat[] Formats to convert a collections into
@@ -64,7 +69,7 @@ class Processor
     protected int $initRam;
 
     /**
-     * @var string
+     * @var string Path to environment file
      */
     protected string $envFile;
 
@@ -151,6 +156,11 @@ class Processor
                     $this->formats[ConvertFormat::Wget->name] = ConvertFormat::Wget;
                     break;
 
+                case '--var':
+                    [$var, $value] = explode('=', trim($this->argv[$idx + 1]));
+                    $this->vars[$var] = $value;
+                    break;
+
                 case '-v':
                 case '--version':
                     die(implode(PHP_EOL, $this->version()) . PHP_EOL);
@@ -198,6 +208,7 @@ class Processor
         foreach ($this->formats as $type) {
             $this->converters[$type->name] = new $type->value($this->preserveOutput);
         }
+        unset($this->formats);
     }
 
     /**
@@ -215,6 +226,7 @@ class Processor
             }
             $this->collections[$content->collection->info->name] = $content->collection;
         }
+        unset($this->collectionPaths, $content);
     }
 
     /**
@@ -234,6 +246,10 @@ class Processor
             throw new JsonException("not a valid environment: $this->envFile");
         }
         $this->env = new Environment($content->environment);
+        foreach ($this->vars as $var => $value) {
+            $this->env[$var] = $value;
+        }
+        unset($this->vars, $this->envFile, $content, $var, $value);
     }
 
     /**
@@ -267,6 +283,7 @@ class Processor
             print(PHP_EOL);
             ++$success;
         }
+        unset($this->converters, $type, $exporter, $outputPath, $this->collections, $collectionName, $collection);
         $this->printStats($success, $current);
     }
 
@@ -281,7 +298,7 @@ class Processor
     {
         $time = (hrtime(true) - $this->initTime) / 1_000_000;
         $ram = (memory_get_peak_usage(true) - $this->initRam) / 1024 / 1024;
-        printf('Converted %d of %d in %.3f ms using %.3f MiB RAM%s', $success, $count, $time, $ram, PHP_EOL);
+        printf('Converted %d of %d in %.3f ms using up to %.3f MiB RAM%s', $success, $count, $time, $ram, PHP_EOL);
     }
 
     /**
@@ -316,22 +333,22 @@ class Processor
             "\t./vendor/bin/pm-convert -f|-d PATH -o OUTPUT_PATH [ARGUMENTS] [FORMATS]",
             '',
             'Possible ARGUMENTS:',
-            "\t-f, --file       - a PATH to single collection located in PATH to convert from",
-            "\t-d, --dir        - a directory with collections located in PATH to convert from",
-            "\t-o, --output     - a directory OUTPUT_PATH to put results in",
-            "\t-e, --env        - use environment file with variable values to replace in request",
-            "\t-p, --preserve   - do not delete OUTPUT_PATH (if exists)",
-            "\t-h, --help       - show this help message and exit",
-            "\t-v, --version    - show version info and exit",
+            "\t-f, --file          - a PATH to a single collection file to convert from",
+            "\t-d, --dir           - a PATH to a directory with collections to convert from",
+            "\t-o, --output        - a directory OUTPUT_PATH to put results in",
+            "\t-e, --env           - use environment file with variables to replace in requests",
+            "\t--var \"NAME=VALUE\"  - force replace specified env variable called NAME with custom VALUE",
+            "\t                      (see interpolation notes below)",
+            "\t-p, --preserve      - do not delete OUTPUT_PATH (if exists)",
+            "\t-h, --help          - show this help message and exit",
+            "\t-v, --version       - show version info and exit",
             '',
             'If no ARGUMENTS passed then --help implied.',
-            'If both -f and -d are specified then only unique set of files will be converted.',
+            'If both -f and -d are specified then only unique set of files from both arguments will be converted.',
             '-f or -d are required to be specified at least once, but each may be specified multiple times.',
             'PATH must be a valid path to readable json-file or directory.',
             'OUTPUT_PATH must be a valid path to writeable directory.',
-            'If -o is specified several times then only last one will be used.',
-            'If -e is specified several times then only last one will be used.',
-            'If -e is not specified then only collection vars will be replaced (if any).',
+            'If -o or -e was specified several times then only last one will be used.',
             '',
             'Possible FORMATS:',
             "\t--http   - generate raw *.http files (default)",
@@ -341,6 +358,15 @@ class Processor
             'If no FORMATS specified then --http implied.',
             'Any of FORMATS can be specified at the same time.',
             '',
+            'Notes about variable interpolation:',
+            "\t1. You can use -e to tell where to find variables to replace in requests.",
+            "\t2. You can use one or several --var to replace specific env variables to your own value.",
+            "\t3. Correct syntax is `--var \"NAME=VALUE\". NAME may be in curly braces like {{NAME}}.",
+            "\t4. Since -e is optional, a bunch of --var will emulate an environment. Also it does not",
+            "\t   matter if there is --var in environment file you provided or not.",
+            "\t5. Even if you (not) provided -e and/or --var, any of variable may still be overridden",
+            "\t   from collection (if any), so last ones has top priority.",
+            '',
             'Example:',
             "    ./pm-convert \ ",
             "        -f ~/dir1/first.postman_collection.json \ ",
@@ -348,6 +374,7 @@ class Processor
             "        --file ~/dir2/second.postman_collection.json \ ",
             "        --env ~/localhost.postman_environment.json \ ",
             "        -d ~/personal \ ",
+            "        --var \"myvar=some value\" \ ",
             "        -o ~/postman_export ",
             "",
         ], $this->copyright());

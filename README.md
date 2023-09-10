@@ -24,12 +24,13 @@ These formats are supported for now: `http`, `curl`, `wget`.
 
 ## Planned features
 
+- conversion between postman schema v2.1 <-> v2.0 (#11);
 - support as many as possible/necessary of authentication kinds (_currently only `Bearer` supported_);
 - support as many as possible/necessary of body formats (_currently only `json` and `formdata`_);
-- documentation generation support (markdown) with responce examples (if present);
+- documentation generation support (markdown) with responce examples (if present) (#6);
 - maybe some another convert formats (like httpie or something...);
 - better logging;
-- tests, phpcs, psalm, etc.;
+- 90%+ test coverage, phpcs, psalm, etc.;
 - web version.
 
 ## Install and upgrade
@@ -59,29 +60,39 @@ Usage:
         ./vendor/bin/pm-convert -f|-d PATH -o OUTPUT_PATH [ARGUMENTS] [FORMATS]
 
 Possible ARGUMENTS:
-        -f, --file       - a PATH to single collection located in PATH to convert from
-        -d, --dir        - a directory with collections located in COLLECTION_FILEPATH to convert from
-        -o, --output     - a directory OUTPUT_PATH to put results in
-        -e, --env        - use environment file with variable values to replace in request
-        -p, --preserve   - do not delete OUTPUT_PATH (if exists)
-        -h, --help       - show this help message and exit
-        -v, --version    - show version info and exit
+        -f, --file          - a PATH to a single collection file to convert from
+        -d, --dir           - a PATH to a directory with collections to convert from
+        -o, --output        - a directory OUTPUT_PATH to put results in
+        -e, --env           - use environment file with variables to replace in requests
+        --var "NAME=VALUE"  - force replace specified env variable called NAME with custom VALUE
+                              (see interpolation notes below)
+        -p, --preserve      - do not delete OUTPUT_PATH (if exists)
+        -h, --help          - show this help message and exit
+        -v, --version       - show version info and exit
 
 If no ARGUMENTS passed then --help implied.
-If both -f and -d are specified then only unique set of files will be converted.
+If both -f and -d are specified then only unique set of files from both arguments will be converted.
 -f or -d are required to be specified at least once, but each may be specified multiple times.
 PATH must be a valid path to readable json-file or directory.
 OUTPUT_PATH must be a valid path to writeable directory.
-If -o is specified several times then only last one will be used.
-If -e is specified several times then only last one will be used.
-If -e is not specified then only collection vars will be replaced (if any).
+If -o or -e was specified several times then only last one will be used.
 
 Possible FORMATS:
         --http   - generate raw *.http files (default)
         --curl   - generate shell scripts with curl command
         --wget   - generate shell scripts with wget command
+
 If no FORMATS specified then --http implied.
 Any of FORMATS can be specified at the same time.
+
+Notes about variable interpolation:
+        1. You can use -e to tell where to find variables to replace in requests.
+        2. You can use one or several --var to replace specific env variables to your own value.
+        3. Correct syntax is `--var "NAME=VALUE". NAME may be in curly braces like {{NAME}}.
+        4. Since -e is optional, a bunch of --var will emulate an environment. Also it does not
+           matter if there is --var in environment file you provided or not.
+        5. Even if you (not) provided -e and/or --var, any of variable may still be overridden
+           from collection (if any), so last ones has top priority.
 
 Example:
     ./pm-convert \ 
@@ -90,7 +101,9 @@ Example:
         --file ~/dir2/second.postman_collection.json \ 
         --env ~/localhost.postman_environment.json \ 
         -d ~/personal \ 
-        -o ~/postman_export
+        --var "myvar=some value" \ 
+        -o ~/postman_export 
+
 ```
 
 ### Notices

@@ -28,11 +28,6 @@ abstract class AbstractConverter implements ConverterContract
     protected string $outputPath;
 
     /**
-     * @var string[]
-     */
-    protected array $vars = [];
-
-    /**
      * @var Environment|null
      */
     protected ?Environment $env = null;
@@ -72,9 +67,10 @@ abstract class AbstractConverter implements ConverterContract
      */
     protected function setVariables(): static
     {
-        if (isset($this->collection?->variable)) {
+        empty($this->env) && $this->env = new Environment($this->collection?->variable);
+        if (!empty($this->collection?->variable)) {
             foreach ($this->collection->variable as $var) {
-                $this->vars["{{{$var->key}}}"] = $var->value;
+                $this->env[$var->key] = $var->value;
             }
         }
         return $this;
@@ -176,21 +172,18 @@ abstract class AbstractConverter implements ConverterContract
      */
     protected function interpolate(string $content): string
     {
-        if (empty($this->vars) && !$this->env?->hasVars()) {
+        if (!$this->env?->hasVars()) {
             return $content;
         }
         $matches = [];
-        if (preg_match_all('/\{\{[a-zA-Z][a-zA-Z0-9]*}}/m', $content, $matches, PREG_PATTERN_ORDER) > 0) {
+        if (preg_match_all('/\{\{.*}}/m', $content, $matches, PREG_PATTERN_ORDER) > 0) {
             foreach ($matches[0] as $key => $var) {
                 if (str_contains($content, $var)) {
-                    $content = str_replace($var, $this->vars[$var] ?? $this->env[$var] ?? $var, $content);
+                    $content = str_replace($var, $this->env[$var] ?: $var, $content);
                     unset($matches[0][$key]);
                 }
             }
         }
-        // if (!empty($matches[0])) {
-        //     fwrite(STDERR, sprintf('  No values found: %s%s', implode(', ', $matches[0]), PHP_EOL));
-        // }
         return $content;
     }
 }
