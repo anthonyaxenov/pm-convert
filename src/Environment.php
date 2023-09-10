@@ -17,7 +17,7 @@ class Environment implements \ArrayAccess
     public function __construct(protected object $env)
     {
         foreach ($env->values as $var) {
-            $this->vars["{{{$var->key}}}"] = $var->value;
+            $this->vars[static::formatKey($var->key)] = $var->value;
         }
     }
 
@@ -36,7 +36,7 @@ class Environment implements \ArrayAccess
      */
     public function offsetExists(mixed $offset): bool
     {
-        return array_key_exists($offset, $this->vars);
+        return array_key_exists(static::formatKey($offset), $this->vars);
     }
 
     /**
@@ -44,7 +44,7 @@ class Environment implements \ArrayAccess
      */
     public function offsetGet(mixed $offset): mixed
     {
-        return $this->vars[$offset];
+        return $this->vars[static::formatKey($offset)] ?? null;
     }
 
     /**
@@ -52,7 +52,7 @@ class Environment implements \ArrayAccess
      */
     public function offsetSet(mixed $offset, mixed $value): void
     {
-        $this->vars[$offset] = $value;
+        $this->vars[static::formatKey($offset)] = $value;
     }
 
     /**
@@ -60,6 +60,17 @@ class Environment implements \ArrayAccess
      */
     public function offsetUnset(mixed $offset): void
     {
-        unset($this->vars[$offset]);
+        unset($this->vars[static::formatKey($offset)]);
+    }
+
+    /**
+     * Returns correct variable {{name}}
+     *
+     * @param string $key
+     * @return string
+     */
+    public static function formatKey(string $key): string
+    {
+        return sprintf('{{%s}}', str_replace(['{', '}'], '', $key));
     }
 }
