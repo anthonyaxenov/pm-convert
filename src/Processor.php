@@ -165,6 +165,13 @@ class Processor
                     $this->formats[ConvertFormat::Postman21->name] = ConvertFormat::Postman21;
                     break;
 
+                case '-a':
+                case '--all':
+                    foreach (ConvertFormat::cases() as $format) {
+                        $this->formats[$format->name] = $format;
+                    }
+                    break;
+
                 case '--var':
                     [$var, $value] = explode('=', trim($this->argv[$idx + 1]));
                     $this->vars[$var] = $value;
@@ -348,7 +355,6 @@ class Processor
             "\t-o, --output        - a directory OUTPUT_PATH to put results in",
             "\t-e, --env           - use environment file with variables to replace in requests",
             "\t--var \"NAME=VALUE\"  - force replace specified env variable called NAME with custom VALUE",
-            "\t                      (see interpolation notes below)",
             "\t-p, --preserve      - do not delete OUTPUT_PATH (if exists)",
             "\t-h, --help          - show this help message and exit",
             "\t-v, --version       - show version info and exit",
@@ -361,21 +367,15 @@ class Processor
             'If -o or -e was specified several times then only last one will be used.',
             '',
             'Possible FORMATS:',
-            "\t--http   - generate raw *.http files (default)",
-            "\t--curl   - generate shell scripts with curl command",
-            "\t--wget   - generate shell scripts with wget command",
+            "\t--http     - generate raw *.http files (default)",
+            "\t--curl     - generate shell scripts with curl command",
+            "\t--wget     - generate shell scripts with wget command",
+            "\t--v2.0     - convert from Postman Collection Schema v2.1 into v2.0",
+            "\t--v2.1     - convert from Postman Collection Schema v2.0 into v2.1",
+            "\t-a, --all  - convert to all of formats listed above",
             '',
             'If no FORMATS specified then --http implied.',
-            'Any of FORMATS can be specified at the same time.',
-            '',
-            'Notes about variable interpolation:',
-            "\t1. You can use -e to tell where to find variables to replace in requests.",
-            "\t2. You can use one or several --var to replace specific env variables to your own value.",
-            "\t3. Correct syntax is `--var \"NAME=VALUE\". NAME may be in curly braces like {{NAME}}.",
-            "\t4. Since -e is optional, a bunch of --var will emulate an environment. Also it does not",
-            "\t   matter if there is --var in environment file you provided or not.",
-            "\t5. Even if you (not) provided -e and/or --var, any of variable may still be overridden",
-            "\t   from collection (if any), so last ones has top priority.",
+            'Any of FORMATS can be specified at the same time or replaced by --all.',
             '',
             'Example:',
             "    ./pm-convert \ ",
@@ -385,7 +385,8 @@ class Processor
             "        --env ~/localhost.postman_environment.json \ ",
             "        -d ~/personal \ ",
             "        --var \"myvar=some value\" \ ",
-            "        -o ~/postman_export ",
+            "        -o ~/postman_export \ ",
+            "       --all",
             "",
         ], $this->copyright());
     }

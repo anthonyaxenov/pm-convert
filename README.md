@@ -24,10 +24,9 @@ These formats are supported for now: `http`, `curl`, `wget`.
 
 ## Planned features
 
-- conversion between postman schema v2.1 <-> v2.0 (#11);
 - support as many as possible/necessary of authentication kinds (_currently only `Bearer` supported_);
 - support as many as possible/necessary of body formats (_currently only `json` and `formdata`_);
-- documentation generation support (markdown) with responce examples (if present) (#6);
+- documentation generation support (markdown) with response examples (if present) (#6);
 - maybe some another convert formats (like httpie or something...);
 - better logging;
 - 90%+ test coverage, phpcs, psalm, etc.;
@@ -65,7 +64,6 @@ Possible ARGUMENTS:
         -o, --output        - a directory OUTPUT_PATH to put results in
         -e, --env           - use environment file with variables to replace in requests
         --var "NAME=VALUE"  - force replace specified env variable called NAME with custom VALUE
-                              (see interpolation notes below)
         -p, --preserve      - do not delete OUTPUT_PATH (if exists)
         -h, --help          - show this help message and exit
         -v, --version       - show version info and exit
@@ -78,32 +76,26 @@ OUTPUT_PATH must be a valid path to writeable directory.
 If -o or -e was specified several times then only last one will be used.
 
 Possible FORMATS:
-        --http   - generate raw *.http files (default)
-        --curl   - generate shell scripts with curl command
-        --wget   - generate shell scripts with wget command
+        --http     - generate raw *.http files (default)
+        --curl     - generate shell scripts with curl command
+        --wget     - generate shell scripts with wget command
+        --v2.0     - convert from Postman Collection Schema v2.1 into v2.0
+        --v2.1     - convert from Postman Collection Schema v2.0 into v2.1
+        -a, --all  - convert to all of formats listed above
 
 If no FORMATS specified then --http implied.
-Any of FORMATS can be specified at the same time.
-
-Notes about variable interpolation:
-        1. You can use -e to tell where to find variables to replace in requests.
-        2. You can use one or several --var to replace specific env variables to your own value.
-        3. Correct syntax is `--var "NAME=VALUE". NAME may be in curly braces like {{NAME}}.
-        4. Since -e is optional, a bunch of --var will emulate an environment. Also it does not
-           matter if there is --var in environment file you provided or not.
-        5. Even if you (not) provided -e and/or --var, any of variable may still be overridden
-           from collection (if any), so last ones has top priority.
+Any of FORMATS can be specified at the same time or replaced by --all.
 
 Example:
-    ./pm-convert \ 
-        -f ~/dir1/first.postman_collection.json \ 
-        --directory ~/team \ 
-        --file ~/dir2/second.postman_collection.json \ 
-        --env ~/localhost.postman_environment.json \ 
-        -d ~/personal \ 
-        --var "myvar=some value" \ 
-        -o ~/postman_export 
-
+    ./pm-convert \
+        -f ~/dir1/first.postman_collection.json \
+        --directory ~/team \
+        --file ~/dir2/second.postman_collection.json \
+        --env ~/localhost.postman_environment.json \
+        -d ~/personal \
+        --var "myvar=some value" \
+        -o ~/postman_export \
+        --all
 ```
 
 ### Notices
@@ -116,12 +108,39 @@ Example:
    If not, you can rename them in Postman or convert collections with similar names into different directories.
    Otherwise any generated file may be accidently overwritten by another one.
 
+## Notes about variable interpolation
+
+1. You can use -e to tell where to find variables to replace in requests.
+2. You can use one or several --var to replace specific env variables to your own value.
+3. Correct syntax is `--var "NAME=VALUE"`. `NAME` may be in curly braces like `{{NAME}}`.
+4. Since -e is optional, a bunch of `--var` will emulate an environment. Also it does not matter if there is `--var` in environment file you provided or not.
+5. Even if you (not) provided -e and/or `--var`, any of variable may still be overridden from collection (if any), so last ones has top priority.
+
+### Notes about conversion between Postman Schemas
+
+You can use `--v2.1` to convert v2.1 into v2.1 (and this is not a typo).
+Same applies to `--v2.0`.
+
+There is a case when a collection has been exported via Postman API.
+In such case collection itself places in single root object called `collection` like this:
+
+```
+{
+   "collection": {
+      // your actual collection here
+   }
+}
+```
+
+So, pm-convert will just raise actual data up on top level and write into disk.
+
 ## How to implement a new format
 
-1. Create new namespace in `./src/Converters` and name it according to format of your choice
-2. Create two classes for converter and request object which extends `Converters\Abstract\Abstract{Converter, Request}` respectively
-3. Change constants values in your new request class according to format you want to implement
-4. Write your own logic in converter's `__toString()` method, write new methods and override abstract ones
+1. Create new namespace in `./src/Converters` and name it according to format of your choice.
+2. Create two classes for converter and request object which extends `Converters\Abstract\Abstract{Converter, Request}` respectively.
+3. Change constants values in your new request class according to format you want to implement.
+4. Add your converter class name in `Converters\ConvertFormat`.
+5. Write your own logic in converter, write new methods and override abstract ones.
 
 ## License
 
