@@ -12,12 +12,14 @@ class Environment implements \ArrayAccess
     protected array $vars = [];
 
     /**
-     * @param object $env
+     * @param object|null $env
      */
-    public function __construct(protected object $env)
+    public function __construct(protected ?object $env)
     {
-        foreach ($env->values as $var) {
-            $this->vars[static::formatKey($var->key)] = $var->value;
+        if (!empty($env->values)) {
+            foreach ($env->values as $var) {
+                $this->vars[static::formatKey($var->key)] = $var->value;
+            }
         }
     }
 

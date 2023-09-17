@@ -12,6 +12,7 @@ use Stringable;
  *
  * @property array|object $item
  * @property object $info
+ * @property object|null $variable
  */
 class Collection implements Stringable
 {

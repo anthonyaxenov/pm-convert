@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace PmConverter\Converters\Postman20;
+namespace PmConverter\Converters\Postman21;
 
 use PmConverter\Collection;
 use PmConverter\Converters\{
@@ -13,13 +13,13 @@ use PmConverter\Exceptions\DirectoryIsNotWriteableException;
 use PmConverter\FileSystem;
 
 /**
- * Converts Postman Collection v2.1 to v2.0
+ * Converts Postman Collection v2.0 to v2.1
  */
-class Postman20Converter extends AbstractConverter implements ConverterContract
+class Postman21Converter extends AbstractConverter implements ConverterContract
 {
-    protected const FILE_EXT = 'v20.postman_collection.json';
+    protected const FILE_EXT = 'v21.postman_collection.json';
 
-    protected const OUTPUT_DIR = 'pm-v2.0';
+    protected const OUTPUT_DIR = 'pm-v2.1';
 
     /**
      * Converts collection requests
@@ -33,7 +33,7 @@ class Postman20Converter extends AbstractConverter implements ConverterContract
     public function convert(Collection $collection, string $outputPath): void
     {
         $this->collection = $collection;
-        $this->collection->info->schema = str_replace('/v2.1.', '/v2.0.', $this->collection->info->schema);
+        $this->collection->info->schema = str_replace('/v2.0.', '/v2.1.', $this->collection->info->schema);
         $this->prepareOutputDir($outputPath);
         $this->convertAuth($this->collection->raw());
         foreach ($this->collection->item as $item) {
@@ -82,7 +82,7 @@ class Postman20Converter extends AbstractConverter implements ConverterContract
     }
 
     /**
-     * Converts auth object from v2.1 to v2.0
+     * Converts auth object from v2.0 to v2.1
      *
      * @param object $request
      * @return void
@@ -93,30 +93,48 @@ class Postman20Converter extends AbstractConverter implements ConverterContract
             return;
         }
         $type = $request->auth->type;
-        if ($type !== 'noauth' && is_array($request->auth->$type)) {
+        if ($type !== 'noauth' && isset($request->auth->$type)) {
             $auth = [];
-            foreach ($request->auth->$type as $param) {
-                $auth[$param->key] = $param->value;
+            foreach ($request->auth->$type as $key => $value) {
+                $auth[] = (object)[
+                    'key' => $key,
+                    'value' => $value,
+                    'type' => 'string',
+                ];
             }
-            $request->auth->$type = (object)$auth;
+            $request->auth->$type = $auth;
         }
     }
 
     /**
-     * Converts requests URLs from object v2.1 to string v2.0
+     * Converts requests URLs from string v2.0 to object v2.1
      *
      * @param object $request
      * @return void
      */
     protected function convertRequestUrl(object $request): void
     {
-        if (is_object($request->url)) {
-            $request->url = $request->url->raw;
+        if (is_string($request->url) && mb_strlen($request->url) > 0) {
+            $data = array_values(array_filter(explode('/', $request->url))); //TODO URL parsing
+            if (count($data) === 1) {
+                $url = [
+                    'raw' => $request->url,
+                    'host' => [$data[0] ?? $request->url],
+                ];
+            } else {
+                $url = [
+                    'raw' => $request->url,
+                    'protocol' => str_replace(':', '', $data[0]),
+                    'host' => [$data[1] ?? $request->url],
+                    'path' => array_slice($data, 2),
+                ];
+            }
+            $request->url = (object)$url;
         }
     }
 
     /**
-     * Converts URLs response examples from object v2.1 to string v2.0
+     * Converts URLs response examples from string v2.0 to object v2.1
      *
      * @param array $responses
      * @return void
@@ -124,8 +142,22 @@ class Postman20Converter extends AbstractConverter implements ConverterContract
     protected function convertResponseUrls(array $responses): void
     {
         foreach ($responses as $response) {
-            if (is_object($response->originalRequest->url)) {
-                $response->originalRequest->url = $response->originalRequest->url->raw;
+            if (is_string($response->originalRequest->url)) {
+                $data = array_values(array_filter(explode('/', $response->originalRequest->url))); //TODO URL parsing
+                if (count($data) === 1) {
+                    $url = [
+                        'raw' => $response->originalRequest->url,
+                        'host' => [$data[0] ?? $response->originalRequest->url],
+                    ];
+                } else {
+                    $url = [
+                        'raw' => $response->originalRequest->url,
+                        'protocol' => str_replace(':', '', $data[0]),
+                        'host' => [$data[1] ?? $response->originalRequest->url],
+                        'path' => array_slice($data, 2),
+                    ];
+                }
+                $response->originalRequest->url = (object)$url;
             }
         }
     }

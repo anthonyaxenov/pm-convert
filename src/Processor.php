@@ -54,7 +54,7 @@ class Processor
     protected array $converters = [];
 
     /**
-     * @var object[] Collections that will be converted into choosen formats
+     * @var Collection[] Collections that will be converted into choosen formats
      */
     protected array $collections = [];
 
@@ -93,6 +93,7 @@ class Processor
      * Parses an array of arguments came from cli
      *
      * @return void
+     * @throws JsonException
      */
     protected function parseArgs(): void
     {
@@ -158,6 +159,10 @@ class Processor
 
                 case '--v2.0':
                     $this->formats[ConvertFormat::Postman20->name] = ConvertFormat::Postman20;
+                    break;
+
+                case '--v2.1':
+                    $this->formats[ConvertFormat::Postman21->name] = ConvertFormat::Postman21;
                     break;
 
                 case '--var':
@@ -297,8 +302,13 @@ class Processor
     protected function printStats(int $success, int $count): void
     {
         $time = (hrtime(true) - $this->initTime) / 1_000_000;
+        $timeFmt = 'ms';
+        if ($time > 1000) {
+            $time /= 1000;
+            $timeFmt = 'sec';
+        }
         $ram = (memory_get_peak_usage(true) - $this->initRam) / 1024 / 1024;
-        printf('Converted %d of %d in %.3f ms using up to %.3f MiB RAM%s', $success, $count, $time, $ram, PHP_EOL);
+        printf("Converted %d/%d in %.2f $timeFmt using up to %.2f MiB RAM%s", $success, $count, $time, $ram, PHP_EOL);
     }
 
     /**
