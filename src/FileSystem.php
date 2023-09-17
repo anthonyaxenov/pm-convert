@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace PmConverter;
 
+use JsonException;
 use PmConverter\Exceptions\{
     CannotCreateDirectoryException,
     DirectoryIsNotReadableException,
@@ -110,16 +111,14 @@ class FileSystem
      *
      * @param string $path
      * @return bool
+     * @throws JsonException
      */
     public static function isCollectionFile(string $path): bool
     {
-        $path = static::normalizePath($path);
-        return !empty($path = trim($path))
+        return (!empty($path = trim(static::normalizePath($path))))
             && str_ends_with($path, '.postman_collection.json')
             && file_exists($path)
             && is_readable($path)
-            && ($json = json_decode(file_get_contents($path), true))
-            && json_last_error() === JSON_ERROR_NONE
-            && isset($json['collection']['info']['name']);
+            && Collection::fromFile($path)->version() !== CollectionVersion::Unknown;
     }
 }

@@ -8,7 +8,7 @@ use PmConverter\Converters\RequestContract;
 use PmConverter\Exceptions\{
     EmptyHttpVerbException,
     InvalidHttpVersionException};
-use PmConverter\HttpVersions;
+use PmConverter\HttpVersion;
 use Stringable;
 
 /**
@@ -61,9 +61,9 @@ abstract class AbstractRequest implements Stringable, RequestContract
      */
     public function setHttpVersion(float $version): static
     {
-        if (!in_array($version, HttpVersions::values())) {
+        if (!in_array($version, HttpVersion::values())) {
             throw new InvalidHttpVersionException(
-                'Only these HTTP versions are supported: ' . implode(', ', HttpVersions::values())
+                'Only these HTTP versions are supported: ' . implode(', ', HttpVersion::values())
             );
         }
         $this->httpVersion = $version;

@@ -5,11 +5,15 @@ declare(strict_types=1);
 namespace PmConverter\Converters\Abstract;
 
 use Exception;
+use PmConverter\Collection;
 use PmConverter\Converters\{
     ConverterContract,
     RequestContract};
 use PmConverter\Environment;
-use PmConverter\Exceptions\InvalidHttpVersionException;
+use PmConverter\Exceptions\{
+    CannotCreateDirectoryException,
+    DirectoryIsNotWriteableException,
+    InvalidHttpVersionException};
 use PmConverter\FileSystem;
 
 /**
@@ -18,9 +22,9 @@ use PmConverter\FileSystem;
 abstract class AbstractConverter implements ConverterContract
 {
     /**
-     * @var object|null
+     * @var Collection|null
      */
-    protected ?object $collection = null;
+    protected ?Collection $collection = null;
 
     /**
      * @var string
@@ -45,14 +49,32 @@ abstract class AbstractConverter implements ConverterContract
     }
 
     /**
-     * Converts collection requests
+     * Creates a new directory to save a converted collection into
      *
-     * @throws Exception
+     * @param string $outputPath
+     * @return void
+     * @throws CannotCreateDirectoryException
+     * @throws DirectoryIsNotWriteableException
      */
-    public function convert(object $collection, string $outputPath): void
+    protected function prepareOutputDir(string $outputPath): void
     {
         $outputPath = sprintf('%s%s%s', $outputPath, DIRECTORY_SEPARATOR, static::OUTPUT_DIR);
         $this->outputPath = FileSystem::makeDir($outputPath);
+    }
+
+    /**
+     * Converts collection requests
+     *
+     * @param Collection $collection
+     * @param string $outputPath
+     * @return void
+     * @throws CannotCreateDirectoryException
+     * @throws DirectoryIsNotWriteableException
+     * @throws Exception
+     */
+    public function convert(Collection $collection, string $outputPath): void
+    {
+        $this->prepareOutputDir($outputPath);
         $this->collection = $collection;
         $this->setVariables();
         foreach ($collection->item as $item) {
@@ -94,7 +116,9 @@ abstract class AbstractConverter implements ConverterContract
      */
     protected function isItemFolder(object $item): bool
     {
-        return !empty($item->item) && empty($item->request);
+        return !empty($item->item)
+            && is_array($item->item)
+            && empty($item->request);
     }
 
     /**

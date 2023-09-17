@@ -21,7 +21,7 @@ class Processor
     /**
      * Converter version
      */
-    public const VERSION = '1.4.1';
+    public const VERSION = '1.5.0';
 
     /**
      * @var string[] Paths to collection files
@@ -54,7 +54,7 @@ class Processor
     protected array $converters = [];
 
     /**
-     * @var object[] Collections that will be converted into choosen formats
+     * @var Collection[] Collections that will be converted into choosen formats
      */
     protected array $collections = [];
 
@@ -93,6 +93,7 @@ class Processor
      * Parses an array of arguments came from cli
      *
      * @return void
+     * @throws JsonException
      */
     protected function parseArgs(): void
     {
@@ -107,7 +108,7 @@ class Processor
                     $normpath = FileSystem::normalizePath($rawpath);
                     if (!FileSystem::isCollectionFile($normpath)) {
                         throw new InvalidArgumentException(
-                            sprintf("this is not a valid collection file:%s\t%s %s", PHP_EOL, $arg, $rawpath)
+                            sprintf("not a valid collection:%s\t%s %s", PHP_EOL, $arg, $rawpath)
                         );
                     }
                     $this->collectionPaths[] = $this->argv[$idx + 1];
@@ -154,6 +155,21 @@ class Processor
 
                 case '--wget':
                     $this->formats[ConvertFormat::Wget->name] = ConvertFormat::Wget;
+                    break;
+
+                case '--v2.0':
+                    $this->formats[ConvertFormat::Postman20->name] = ConvertFormat::Postman20;
+                    break;
+
+                case '--v2.1':
+                    $this->formats[ConvertFormat::Postman21->name] = ConvertFormat::Postman21;
+                    break;
+
+                case '-a':
+                case '--all':
+                    foreach (ConvertFormat::cases() as $format) {
+                        $this->formats[$format->name] = $format;
+                    }
                     break;
 
                 case '--var':
@@ -219,12 +235,8 @@ class Processor
     protected function initCollections(): void
     {
         foreach ($this->collectionPaths as $collectionPath) {
-            $content = file_get_contents(FileSystem::normalizePath($collectionPath));
-            $content = json_decode($content, flags: JSON_THROW_ON_ERROR);
-            if (!property_exists($content, 'collection') || empty($content?->collection)) {
-                throw new JsonException("not a valid collection: $collectionPath");
-            }
-            $this->collections[$content->collection->info->name] = $content->collection;
+            $collection = Collection::fromFile($collectionPath);
+            $this->collections[$collection->name()] = $collection;
         }
         unset($this->collectionPaths, $content);
     }
@@ -297,8 +309,13 @@ class Processor
     protected function printStats(int $success, int $count): void
     {
         $time = (hrtime(true) - $this->initTime) / 1_000_000;
+        $timeFmt = 'ms';
+        if ($time > 1000) {
+            $time /= 1000;
+            $timeFmt = 'sec';
+        }
         $ram = (memory_get_peak_usage(true) - $this->initRam) / 1024 / 1024;
-        printf('Converted %d of %d in %.3f ms using up to %.3f MiB RAM%s', $success, $count, $time, $ram, PHP_EOL);
+        printf("Converted %d/%d in %.2f $timeFmt using up to %.2f MiB RAM%s", $success, $count, $time, $ram, PHP_EOL);
     }
 
     /**
@@ -338,7 +355,6 @@ class Processor
             "\t-o, --output        - a directory OUTPUT_PATH to put results in",
             "\t-e, --env           - use environment file with variables to replace in requests",
             "\t--var \"NAME=VALUE\"  - force replace specified env variable called NAME with custom VALUE",
-            "\t                      (see interpolation notes below)",
             "\t-p, --preserve      - do not delete OUTPUT_PATH (if exists)",
             "\t-h, --help          - show this help message and exit",
             "\t-v, --version       - show version info and exit",
@@ -351,21 +367,15 @@ class Processor
             'If -o or -e was specified several times then only last one will be used.',
             '',
             'Possible FORMATS:',
-            "\t--http   - generate raw *.http files (default)",
-            "\t--curl   - generate shell scripts with curl command",
-            "\t--wget   - generate shell scripts with wget command",
+            "\t--http     - generate raw *.http files (default)",
+            "\t--curl     - generate shell scripts with curl command",
+            "\t--wget     - generate shell scripts with wget command",
+            "\t--v2.0     - convert from Postman Collection Schema v2.1 into v2.0",
+            "\t--v2.1     - convert from Postman Collection Schema v2.0 into v2.1",
+            "\t-a, --all  - convert to all of formats listed above",
             '',
             'If no FORMATS specified then --http implied.',
-            'Any of FORMATS can be specified at the same time.',
-            '',
-            'Notes about variable interpolation:',
-            "\t1. You can use -e to tell where to find variables to replace in requests.",
-            "\t2. You can use one or several --var to replace specific env variables to your own value.",
-            "\t3. Correct syntax is `--var \"NAME=VALUE\". NAME may be in curly braces like {{NAME}}.",
-            "\t4. Since -e is optional, a bunch of --var will emulate an environment. Also it does not",
-            "\t   matter if there is --var in environment file you provided or not.",
-            "\t5. Even if you (not) provided -e and/or --var, any of variable may still be overridden",
-            "\t   from collection (if any), so last ones has top priority.",
+            'Any of FORMATS can be specified at the same time or replaced by --all.',
             '',
             'Example:',
             "    ./pm-convert \ ",
@@ -375,7 +385,8 @@ class Processor
             "        --env ~/localhost.postman_environment.json \ ",
             "        -d ~/personal \ ",
             "        --var \"myvar=some value\" \ ",
-            "        -o ~/postman_export ",
+            "        -o ~/postman_export \ ",
+            "       --all",
             "",
         ], $this->copyright());
     }
