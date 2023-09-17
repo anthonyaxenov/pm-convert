@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace PmConverter;
 
-enum HttpVersions: string
+enum HttpVersion: string
 {
     case Version10 = '1.0';
     case Version11 = '1.1';

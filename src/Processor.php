@@ -107,7 +107,7 @@ class Processor
                     $normpath = FileSystem::normalizePath($rawpath);
                     if (!FileSystem::isCollectionFile($normpath)) {
                         throw new InvalidArgumentException(
-                            sprintf("this is not a valid collection file:%s\t%s %s", PHP_EOL, $arg, $rawpath)
+                            sprintf("not a valid collection:%s\t%s %s", PHP_EOL, $arg, $rawpath)
                         );
                     }
                     $this->collectionPaths[] = $this->argv[$idx + 1];
@@ -154,6 +154,10 @@ class Processor
 
                 case '--wget':
                     $this->formats[ConvertFormat::Wget->name] = ConvertFormat::Wget;
+                    break;
+
+                case '--v2.0':
+                    $this->formats[ConvertFormat::Postman20->name] = ConvertFormat::Postman20;
                     break;
 
                 case '--var':
@@ -219,12 +223,8 @@ class Processor
     protected function initCollections(): void
     {
         foreach ($this->collectionPaths as $collectionPath) {
-            $content = file_get_contents(FileSystem::normalizePath($collectionPath));
-            $content = json_decode($content, flags: JSON_THROW_ON_ERROR);
-            if (!property_exists($content, 'collection') || empty($content?->collection)) {
-                throw new JsonException("not a valid collection: $collectionPath");
-            }
-            $this->collections[$content->collection->info->name] = $content->collection;
+            $collection = Collection::fromFile($collectionPath);
+            $this->collections[$collection->name()] = $collection;
         }
         unset($this->collectionPaths, $content);
     }
