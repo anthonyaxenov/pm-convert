@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace PmConverter\Converters\Postman21;
 
 use PmConverter\Collection;
+use PmConverter\CollectionVersion;
 use PmConverter\Converters\{
     Abstract\AbstractConverter,
     ConverterContract};
@@ -33,12 +34,16 @@ class Postman21Converter extends AbstractConverter implements ConverterContract
     public function convert(Collection $collection, string $outputPath): void
     {
         $this->collection = $collection;
-        $this->collection->info->schema = str_replace('/v2.0.', '/v2.1.', $this->collection->info->schema);
-        $this->prepareOutputDir($outputPath);
-        $this->convertAuth($this->collection->raw());
-        foreach ($this->collection->item as $item) {
-            $this->convertItem($item);
+        // if data was exported from API, here is already valid json to
+        // just flush it in file, otherwise we need to convert it deeper
+        if ($this->collection->version() === CollectionVersion::Version20) {
+            $this->collection->info->schema = str_replace('/v2.0.', '/v2.1.', $this->collection->info->schema);
+            $this->convertAuth($this->collection->raw());
+            foreach ($this->collection->item as $item) {
+                $this->convertItem($item);
+            }
         }
+        $this->prepareOutputDir($outputPath);
         $this->writeCollection();
     }
 
