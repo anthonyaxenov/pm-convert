@@ -78,6 +78,6 @@ class CurlRequest extends AbstractRequest
             $this->prepareBody()
         );
         $output[] = rtrim(array_pop($output), '\ ');
-        return implode(PHP_EOL, array_merge($output, ['']));
+        return implode(EOL, array_merge($output, ['']));
     }
 }

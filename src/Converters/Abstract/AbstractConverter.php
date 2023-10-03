@@ -58,7 +58,7 @@ abstract class AbstractConverter implements ConverterContract
      */
     protected function prepareOutputDir(string $outputPath): void
     {
-        $outputPath = sprintf('%s%s%s', $outputPath, DIRECTORY_SEPARATOR, static::OUTPUT_DIR);
+        $outputPath = sprintf('%s%s%s', $outputPath, DS, static::OUTPUT_DIR);
         $this->outputPath = FileSystem::makeDir($outputPath);
     }
 
@@ -132,7 +132,7 @@ abstract class AbstractConverter implements ConverterContract
             static $dir_tree;
             foreach ($item->item as $subitem) {
                 $dir_tree[] = $item->name;
-                $path = implode(DIRECTORY_SEPARATOR, $dir_tree);
+                $path = implode(DS, $dir_tree);
                 if ($this->isItemFolder($subitem)) {
                     $this->convertItem($subitem);
                 } else {
@@ -181,9 +181,9 @@ abstract class AbstractConverter implements ConverterContract
      */
     protected function writeRequest(RequestContract $request, string $subpath = null): bool
     {
-        $filedir = sprintf('%s%s%s', $this->outputPath, DIRECTORY_SEPARATOR, $subpath);
+        $filedir = sprintf('%s%s%s', $this->outputPath, DS, $subpath);
         $filedir = FileSystem::makeDir($filedir);
-        $filepath = sprintf('%s%s%s.%s', $filedir, DIRECTORY_SEPARATOR, $request->getName(), static::FILE_EXT);
+        $filepath = sprintf('%s%s%s.%s', $filedir, DS, $request->getName(), static::FILE_EXT);
         $content = $this->interpolate((string)$request);
         return file_put_contents($filepath, $content) > 0;
     }

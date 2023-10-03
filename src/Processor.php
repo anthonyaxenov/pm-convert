@@ -79,6 +79,11 @@ class Processor
     protected Environment $env;
 
     /**
+     * @var bool Flag to output some debug-specific messages
+     */
+    protected bool $devMode = false;
+
+    /**
      * Constructor
      *
      * @param array $argv Arguments came from cli
@@ -98,7 +103,7 @@ class Processor
     protected function parseArgs(): void
     {
         if (count($this->argv) < 2) {
-            die(implode(PHP_EOL, $this->usage()) . PHP_EOL);
+            die(implode(EOL, $this->usage()) . EOL);
         }
         foreach ($this->argv as $idx => $arg) {
             switch ($arg) {
@@ -108,7 +113,7 @@ class Processor
                     $normpath = FileSystem::normalizePath($rawpath);
                     if (!FileSystem::isCollectionFile($normpath)) {
                         throw new InvalidArgumentException(
-                            sprintf("not a valid collection:%s\t%s %s", PHP_EOL, $arg, $rawpath)
+                            sprintf("not a valid collection:%s\t%s %s", EOL, $arg, $rawpath)
                         );
                     }
                     $this->collectionPaths[] = $this->argv[$idx + 1];
@@ -179,11 +184,15 @@ class Processor
 
                 case '-v':
                 case '--version':
-                    die(implode(PHP_EOL, $this->version()) . PHP_EOL);
+                    die(implode(EOL, $this->version()) . EOL);
 
                 case '-h':
                 case '--help':
-                    die(implode(PHP_EOL, $this->usage()) . PHP_EOL);
+                    die(implode(EOL, $this->usage()) . EOL);
+
+                case '--dev':
+                    $this->devMode = true;
+                    break;
             }
         }
         if (empty($this->collectionPaths)) {
@@ -277,22 +286,26 @@ class Processor
         $this->initCollections();
         $this->initEnv();
         $count = count($this->collections);
-        $current = 0;
-        $success = 0;
-        print(implode(PHP_EOL, array_merge($this->version(), $this->copyright())) . PHP_EOL . PHP_EOL);
+        $current = $success = 0;
+        print(implode(EOL, array_merge($this->version(), $this->copyright())) . EOL . EOL);
         foreach ($this->collections as $collectionName => $collection) {
             ++$current;
-            printf("Converting '%s' (%d/%d):%s", $collectionName, $current, $count, PHP_EOL);
+            printf("Converting '%s' (%d/%d):%s", $collectionName, $current, $count, EOL);
             foreach ($this->converters as $type => $exporter) {
-                printf('> %s%s', strtolower($type), PHP_EOL);
-                $outputPath = sprintf('%s%s%s', $this->outputPath, DIRECTORY_SEPARATOR, $collectionName);
+                printf('> %s%s', strtolower($type), EOL);
+                $outputPath = sprintf('%s%s%s', $this->outputPath, DS, $collectionName);
                 if (!empty($this->env)) {
                     $exporter->withEnv($this->env);
                 }
-                $exporter->convert($collection, $outputPath);
-                printf('  OK: %s%s', $exporter->getOutputPath(), PHP_EOL);
+                try {
+                    $exporter->convert($collection, $outputPath);
+                    printf('  OK: %s%s', $exporter->getOutputPath(), EOL);
+                } catch (Exception $e) {
+                    printf('  ERROR %s: %s%s', $e->getCode(), $e->getMessage(), EOL);
+                    $this->devMode && array_map(static fn ($line) => printf("  %s%s", $line, EOL), $e->getTrace());
+                }
             }
-            print(PHP_EOL);
+            print(EOL);
             ++$success;
         }
         unset($this->converters, $type, $exporter, $outputPath, $this->collections, $collectionName, $collection);
@@ -315,7 +328,7 @@ class Processor
             $timeFmt = 'sec';
         }
         $ram = (memory_get_peak_usage(true) - $this->initRam) / 1024 / 1024;
-        printf("Converted %d/%d in %.2f $timeFmt using up to %.2f MiB RAM%s", $success, $count, $time, $ram, PHP_EOL);
+        printf("Converted %d/%d in %.2f $timeFmt using up to %.2f MiB RAM%s", $success, $count, $time, $ram, EOL);
     }
 
     /**

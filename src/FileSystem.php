@@ -25,7 +25,7 @@ class FileSystem
     public static function normalizePath(string $path): string
     {
         $path = str_replace('~', $_SERVER['HOME'], $path);
-        return rtrim($path, DIRECTORY_SEPARATOR);
+        return rtrim($path, DS);
     }
 
     /**
@@ -101,7 +101,7 @@ class FileSystem
         $path = static::normalizePath($path);
         $records = array_diff(@scandir($path) ?: [], ['.', '..']);
         foreach ($records as &$record) {
-            $record = sprintf('%s%s%s', $path, DIRECTORY_SEPARATOR, $record);
+            $record = sprintf('%s%s%s', $path, DS, $record);
         }
         return $records;
     }

@@ -69,6 +69,6 @@ class HttpRequest extends AbstractRequest
             $this->prepareHeaders(),
             $this->prepareBody()
         );
-        return implode(PHP_EOL, $output);
+        return implode(EOL, $output);
     }
 }

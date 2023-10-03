@@ -89,6 +89,6 @@ class WgetRequest extends AbstractRequest
                 $output[] = sprintf("\t%s", $this->getUrl());
             }
         }
-        return implode(PHP_EOL, array_merge($output, ['']));
+        return implode(EOL, array_merge($output, ['']));
     }
 }

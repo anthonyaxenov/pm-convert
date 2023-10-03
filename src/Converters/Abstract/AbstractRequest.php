@@ -92,7 +92,7 @@ abstract class AbstractRequest implements Stringable, RequestContract
      */
     public function getName(): string
     {
-        return str_replace(DIRECTORY_SEPARATOR, '_', $this->name);
+        return str_replace(DS, '_', $this->name);
     }
 
     /**

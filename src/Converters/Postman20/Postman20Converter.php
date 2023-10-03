@@ -57,7 +57,7 @@ class Postman20Converter extends AbstractConverter implements ConverterContract
     protected function writeCollection(): bool
     {
         $filedir = FileSystem::makeDir($this->outputPath);
-        $filepath = sprintf('%s%s%s.%s', $filedir, DIRECTORY_SEPARATOR, $this->collection->name(), static::FILE_EXT);
+        $filepath = sprintf('%s%s%s.%s', $filedir, DS, $this->collection->name(), static::FILE_EXT);
         return file_put_contents($filepath, $this->collection) > 0;
     }
 
