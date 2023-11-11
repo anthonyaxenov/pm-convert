@@ -86,7 +86,7 @@ interface RequestContract
      *
      * @return string
      */
-    public function getUrl(): string;
+    public function getRawUrl(): string;
 
     /**
      * Sets headers from collection item to request object
@@ -116,7 +116,7 @@ interface RequestContract
     /**
      * Sets authorization headers
      *
-     * @param object|null $auth
+     * @param object $auth
      * @return $this
      */
     public function setAuth(object $auth): static;

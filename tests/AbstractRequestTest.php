@@ -71,7 +71,7 @@ class AbstractRequestTest extends TestCase
     /**
      * @covers PmConverter\Converters\Abstract\AbstractRequest
      * @covers PmConverter\Converters\Abstract\AbstractRequest::setUrl()
-     * @covers PmConverter\Converters\Abstract\AbstractRequest::getUrl()
+     * @covers PmConverter\Converters\Abstract\AbstractRequest::getRawUrl()
      * @return void
      */
     public function testUrl(): void
@@ -79,7 +79,7 @@ class AbstractRequestTest extends TestCase
         $request = new \PmConverter\Converters\Http\HttpRequest();
         $request->setUrl('http://localhost');
 
-        $this->assertSame('http://localhost', $request->getUrl());
+        $this->assertSame('http://localhost', $request->getRawUrl());
     }
 
     /**

@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace PmConverter\Converters;
 
-use PmConverter\Collection;
-
 interface ConverterContract
 {
-    public function convert(Collection $collection, string $outputPath): void;
-    public function getOutputPath(): string;
+    // public function withEnv(Environment $env): static;
+    // public function to(string $outputPath): static;
+    // public function convert(Collection $collection): static;
+    // public function converted(): mixed;
+    // public function flush(): mixed;
+    // public function getOutputPath(): string;
 }

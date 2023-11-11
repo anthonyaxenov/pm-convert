@@ -29,7 +29,7 @@ class HttpRequest extends AbstractRequest
      */
     protected function prepareHeaders(): array
     {
-        $output[] = sprintf('%s %s HTTP/%s', $this->getVerb(), $this->getUrl(), $this->getHttpVersion());
+        $output[] = sprintf('%s %s HTTP/%s', $this->getVerb(), $this->getRawUrl(), $this->getHttpVersion());
         foreach ($this->headers as $name => $data) {
             $output[] = sprintf('%s%s: %s', $data['disabled'] ? '# ' : '', $name, $data['value']);
         }
