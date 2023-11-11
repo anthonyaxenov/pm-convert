@@ -8,13 +8,17 @@ Without 3rd-party dependencies.
 
 These formats are supported for now: `http`, `curl`, `wget`.
 
-> This project was quickly written in my spare time to solve one exact problem in one NDA-project, so it may
-> contain stupid errors and (for sure) doesn't cover all possible cases according to collection schema.
-> So feel free to propose your improvements.
+> This project has been started and quickly written in my spare time to solve one exact problem in one NDA-project,
+> so it may contain stupid errors and (for sure) doesn't cover all possible cases according to collection schema.
+> Feel free to propose your improvements.
+
+Versions older than the latest are not supported, only current one is.
+If you found an error in old version please ensure if an error you found has been fixed in latest version.
+So please always use the latest version of `pm-convert`.
 
 ## Supported features
 
-* [collection schema **v2.1**](https://schema.postman.com/json/collection/v2.1.0/collection.json);
+* collection schema [**v2.1**](https://schema.postman.com/json/collection/v2.1.0/collection.json) and [**v2.0**](https://schema.postman.com/json/collection/v2.0.0/collection.json);
 * `Bearer` auth;
 * replace vars in requests by stored in collection and environment file;
 * export one or several collections (or even whole directories) into one or all of formats supported at the same time;
@@ -25,7 +29,7 @@ These formats are supported for now: `http`, `curl`, `wget`.
 ## Planned features
 
 - support as many as possible/necessary of authentication kinds (_currently only `Bearer` supported_);
-- support as many as possible/necessary of body formats (_currently only `json` and `formdata`_);
+- support as many as possible/necessary of body formats (_currently only `json` and `formdata` supported_);
 - documentation generation support (markdown) with response examples (if present) (#6);
 - maybe some another convert formats (like httpie or something...);
 - better logging;

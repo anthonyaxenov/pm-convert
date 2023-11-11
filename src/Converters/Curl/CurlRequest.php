@@ -72,7 +72,7 @@ class CurlRequest extends AbstractRequest
                 "curl \ ",
                 "\t--http1.1 \ ", //TODO proto
                 "\t--request $this->verb \ ",
-                "\t--location $this->url \ ",
+                "\t--location {$this->getRawUrl()} \ ",
             ],
             $this->prepareHeaders(),
             $this->prepareBody()
