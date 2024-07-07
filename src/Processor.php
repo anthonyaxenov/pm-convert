@@ -5,88 +5,74 @@ declare(strict_types=1);
 namespace PmConverter;
 
 use Exception;
+use Generator;
 use InvalidArgumentException;
+use JetBrains\PhpStorm\NoReturn;
 use JsonException;
-use PmConverter\Converters\{
-    ConverterContract,
-    ConvertFormat};
-use PmConverter\Exceptions\{
-    CannotCreateDirectoryException,
-    DirectoryIsNotReadableException,
-    DirectoryIsNotWriteableException,
-    DirectoryNotExistsException};
+use PmConverter\Converters\Abstract\AbstractConverter;
+use PmConverter\Converters\ConverterContract;
+use PmConverter\Converters\ConvertFormat;
+use PmConverter\Exceptions\CannotCreateDirectoryException;
+use PmConverter\Exceptions\DirectoryIsNotReadableException;
+use PmConverter\Exceptions\DirectoryIsNotWriteableException;
+use PmConverter\Exceptions\DirectoryNotExistsException;
+use PmConverter\Exceptions\IncorrectSettingsFileException;
 
+/**
+ * Main class
+ */
 class Processor
 {
     /**
      * Converter version
      */
-    public const VERSION = '1.5.0';
-
-    /**
-     * @var string[] Paths to collection files
-     */
-    protected array $collectionPaths = [];
-
-    /**
-     * @var string Output path where to put results in
-     */
-    protected string $outputPath;
-
-    /**
-     * @var bool Flag to remove output directories or not before conversion started
-     */
-    protected bool $preserveOutput = false;
-
-    /**
-     * @var string[] Additional variables
-     */
-    protected array $vars;
-
-    /**
-     * @var ConvertFormat[] Formats to convert a collections into
-     */
-    protected array $formats;
-
-    /**
-     * @var ConverterContract[] Converters will be used for conversion according to choosen formats
-     */
-    protected array $converters = [];
-
-    /**
-     * @var Collection[] Collections that will be converted into choosen formats
-     */
-    protected array $collections = [];
+    public const VERSION = '1.6.0';
 
     /**
      * @var int Initial timestamp
      */
-    protected int $initTime;
+    protected readonly int $initTime;
 
     /**
      * @var int Initial RAM usage
      */
-    protected int $initRam;
+    protected readonly int $initRam;
 
     /**
-     * @var string Path to environment file
+     * @var Settings Settings                               (lol)
      */
-    protected string $envFile;
+    protected Settings $settings;
+
+    /**
+     * @var ConverterContract[] Converters will be used for conversion according to chosen formats
+     */
+    protected array $converters = [];
+
+    /**
+     * @var bool Do we need to save settings file and exit or not?
+     */
+    protected bool $needDumpSettings = false;
 
     /**
      * @var Environment
      */
-    protected Environment $env;
+    public Environment $env;
 
     /**
      * Constructor
      *
      * @param array $argv Arguments came from cli
      */
-    public function __construct(protected array $argv)
+    public function __construct(protected readonly array $argv)
     {
         $this->initTime = hrtime(true);
         $this->initRam = memory_get_usage(true);
+        $this->settings = Settings::init();
+        $this->env = Environment::instance()
+            ->readFromFile($this->settings->envFilepath())
+            ->setCustomVars($this->settings->vars());
+        $this->parseArgs();
+        $this->needDumpSettings && $this->dumpSettingsFile();
     }
 
     /**
@@ -97,21 +83,11 @@ class Processor
      */
     protected function parseArgs(): void
     {
-        if (count($this->argv) < 2) {
-            die(implode(PHP_EOL, $this->usage()) . PHP_EOL);
-        }
         foreach ($this->argv as $idx => $arg) {
             switch ($arg) {
                 case '-f':
                 case '--file':
-                    $rawpath = $this->argv[$idx + 1];
-                    $normpath = FileSystem::normalizePath($rawpath);
-                    if (!FileSystem::isCollectionFile($normpath)) {
-                        throw new InvalidArgumentException(
-                            sprintf("not a valid collection:%s\t%s %s", PHP_EOL, $arg, $rawpath)
-                        );
-                    }
-                    $this->collectionPaths[] = $this->argv[$idx + 1];
+                    $this->settings->addFilePath($this->argv[$idx + 1]);
                     break;
 
                 case '-o':
@@ -119,7 +95,7 @@ class Processor
                     if (empty($this->argv[$idx + 1])) {
                         throw new InvalidArgumentException('-o is required');
                     }
-                    $this->outputPath = $this->argv[$idx + 1];
+                    $this->settings->setOutputPath($this->argv[$idx + 1]);
                     break;
 
                 case '-d':
@@ -127,74 +103,121 @@ class Processor
                     if (empty($this->argv[$idx + 1])) {
                         throw new InvalidArgumentException('a directory path is expected for -d (--dir)');
                     }
-                    $rawpath = $this->argv[$idx + 1];
-                    $files = array_filter(
-                        FileSystem::dirContents($rawpath),
-                        static fn($filename) => FileSystem::isCollectionFile($filename)
-                    );
-                    $this->collectionPaths = array_unique(array_merge($this?->collectionPaths ?? [], $files));
+                    $this->settings->addDirPath($this->argv[$idx + 1]);
                     break;
 
                 case '-e':
                 case '--env':
-                    $this->envFile = FileSystem::normalizePath($this->argv[$idx + 1]);
+                    $this->settings->setEnvFilepath($this->argv[$idx + 1]);
                     break;
 
                 case '-p':
                 case '--preserve':
-                    $this->preserveOutput = true;
+                    $this->settings->setPreserveOutput(true);
                     break;
 
                 case '--http':
-                    $this->formats[ConvertFormat::Http->name] = ConvertFormat::Http;
+                    $this->settings->addFormat(ConvertFormat::Http);
                     break;
 
                 case '--curl':
-                    $this->formats[ConvertFormat::Curl->name] = ConvertFormat::Curl;
+                    $this->settings->addFormat(ConvertFormat::Curl);
                     break;
 
                 case '--wget':
-                    $this->formats[ConvertFormat::Wget->name] = ConvertFormat::Wget;
+                    $this->settings->addFormat(ConvertFormat::Wget);
                     break;
 
                 case '--v2.0':
-                    $this->formats[ConvertFormat::Postman20->name] = ConvertFormat::Postman20;
+                    $this->settings->addFormat(ConvertFormat::Postman20);
                     break;
 
                 case '--v2.1':
-                    $this->formats[ConvertFormat::Postman21->name] = ConvertFormat::Postman21;
+                    $this->settings->addFormat(ConvertFormat::Postman21);
                     break;
 
                 case '-a':
                 case '--all':
                     foreach (ConvertFormat::cases() as $format) {
-                        $this->formats[$format->name] = $format;
+                        $this->settings->addFormat($format);
                     }
                     break;
 
                 case '--var':
-                    [$var, $value] = explode('=', trim($this->argv[$idx + 1]));
-                    $this->vars[$var] = $value;
+                    //TODO split by first equal sign
+                    $this->env->setCustomVar(...explode('=', trim($this->argv[$idx + 1])));
+                    break;
+
+                case '--dev':
+                    $this->settings->setDevMode(true);
+                    break;
+
+                case '--dump':
+                    $this->needDumpSettings = true;
                     break;
 
                 case '-v':
                 case '--version':
-                    die(implode(PHP_EOL, $this->version()) . PHP_EOL);
+                    die(implode(EOL, $this->version()) . EOL);
 
                 case '-h':
                 case '--help':
-                    die(implode(PHP_EOL, $this->usage()) . PHP_EOL);
+                    die(implode(EOL, $this->usage()) . EOL);
             }
         }
-        if (empty($this->collectionPaths)) {
+        if (empty($this->settings->collectionPaths())) {
             throw new InvalidArgumentException('there are no collections to convert');
         }
-        if (empty($this->outputPath)) {
+        if (empty($this->settings->outputPath())) {
             throw new InvalidArgumentException('-o is required');
         }
-        if (empty($this->formats)) {
-            $this->formats = [ConvertFormat::Http->name => ConvertFormat::Http];
+        if (empty($this->settings->formats())) {
+            $this->settings->addFormat(ConvertFormat::Http);
         }
+    }
+
+    /**
+     * Handles input command
+     *
+     * @return void
+     * @throws CannotCreateDirectoryException
+     * @throws DirectoryIsNotReadableException
+     * @throws DirectoryIsNotWriteableException
+     * @throws DirectoryNotExistsException
+     * @throws JsonException
+     * @throws IncorrectSettingsFileException
+     */
+    public function handle(): void
+    {
+        $this->prepareOutputDirectory();
+        $this->initConverters();
+        $this->convert();
+    }
+
+    /**
+     * Writes all settings into file if --dump provided
+     *
+     * @return never
+     */
+    #[NoReturn]
+    protected function dumpSettingsFile(): never
+    {
+        $answer = 'o';
+        if ($this->settings::fileExists()) {
+            echo 'Settings file already exists: ' . $this->settings::filepath() . EOL;
+            echo 'Do you want to (o)verwrite it, (b)ackup it and create new one or (c)ancel (default)?' . EOL;
+            $answer = strtolower(trim(readline('> ')));
+        }
+        if (!in_array($answer, ['o', 'b'])) {
+            die('Current settings file has not been changed' . EOL);
+        }
+        if ($answer === 'b') {
+            $filepath = $this->settings->backup();
+            printf("Settings file has been backed up to file:%s\t%s%s", EOL, $filepath, EOL);
+        }
+        $this->settings->dump($this->env->customVars());
+        printf("Arguments has been converted into settings file:%s\t%s%s", EOL, $this->settings::filepath(), EOL);
+        die('Review and edit it if needed.' . EOL);
     }
 
     /**
@@ -206,96 +229,74 @@ class Processor
      * @throws DirectoryNotExistsException
      * @throws DirectoryIsNotReadableException
      */
-    protected function initOutputDirectory(): void
+    protected function prepareOutputDirectory(): void
     {
-        if (isset($this?->outputPath) && !$this->preserveOutput) {
-            FileSystem::removeDir($this->outputPath);
+        if (!$this->settings->isPreserveOutput()) {
+            FileSystem::removeDir($this->settings->outputPath());
         }
-        FileSystem::makeDir($this->outputPath);
+        FileSystem::makeDir($this->settings->outputPath());
     }
 
     /**
-     * Initializes converters according to choosen formats
+     * Initializes converters according to chosen formats
      *
      * @return void
      */
     protected function initConverters(): void
     {
-        foreach ($this->formats as $type) {
-            $this->converters[$type->name] = new $type->value($this->preserveOutput);
+        foreach ($this->settings->formats() as $type) {
+            $this->converters[$type->name] = new $type->value($this->settings->isPreserveOutput());
         }
         unset($this->formats);
     }
 
     /**
-     * Initializes collection objects
+     * Generates collections from settings
      *
+     * @return Generator<Collection>
      * @throws JsonException
      */
-    protected function initCollections(): void
+    protected function newCollection(): Generator
     {
-        foreach ($this->collectionPaths as $collectionPath) {
-            $collection = Collection::fromFile($collectionPath);
-            $this->collections[$collection->name()] = $collection;
+        foreach ($this->settings->collectionPaths() as $collectionPath) {
+            yield Collection::fromFile($collectionPath);
         }
-        unset($this->collectionPaths, $content);
-    }
-
-    /**
-     * Initializes environment object
-     *
-     * @return void
-     * @throws JsonException
-     */
-    protected function initEnv(): void
-    {
-        if (!isset($this->envFile)) {
-            return;
-        }
-        $content = file_get_contents(FileSystem::normalizePath($this->envFile));
-        $content = json_decode($content, flags: JSON_THROW_ON_ERROR);
-        if (!property_exists($content, 'environment') || empty($content?->environment)) {
-            throw new JsonException("not a valid environment: $this->envFile");
-        }
-        $this->env = new Environment($content->environment);
-        foreach ($this->vars as $var => $value) {
-            $this->env[$var] = $value;
-        }
-        unset($this->vars, $this->envFile, $content, $var, $value);
     }
 
     /**
      * Begins a conversion
      *
-     * @throws Exception
+     * @throws JsonException
      */
     public function convert(): void
     {
-        $this->parseArgs();
-        $this->initOutputDirectory();
-        $this->initConverters();
-        $this->initCollections();
-        $this->initEnv();
-        $count = count($this->collections);
-        $current = 0;
-        $success = 0;
-        print(implode(PHP_EOL, array_merge($this->version(), $this->copyright())) . PHP_EOL . PHP_EOL);
-        foreach ($this->collections as $collectionName => $collection) {
+        $count = count($this->settings->collectionPaths());
+        $current = $success = 0;
+        $collection = null;
+        print(implode(EOL, array_merge($this->version(), $this->copyright())) . EOL . EOL);
+        foreach ($this->newCollection() as $collection) {
             ++$current;
-            printf("Converting '%s' (%d/%d):%s", $collectionName, $current, $count, PHP_EOL);
-            foreach ($this->converters as $type => $exporter) {
-                printf('> %s%s', strtolower($type), PHP_EOL);
-                $outputPath = sprintf('%s%s%s', $this->outputPath, DIRECTORY_SEPARATOR, $collectionName);
-                if (!empty($this->env)) {
-                    $exporter->withEnv($this->env);
+            printf("Converting '%s' (%d/%d):%s", $collection->name(), $current, $count, EOL);
+            foreach ($this->converters as $type => $converter) {
+                /** @var AbstractConverter $converter */
+                printf('> %s%s', strtolower($type), EOL);
+                $outputPath = sprintf('%s%s%s', $this->settings->outputPath(), DS, $collection->name());
+                try {
+                    $converter = $converter->to($outputPath);
+                    $converter = $converter->convert($collection);
+                    $converter->flush();
+                    printf('  OK: %s%s', $converter->getOutputPath(), EOL);
+                } catch (Exception $e) {
+                    printf('  ERROR %s: %s%s', $e->getCode(), $e->getMessage(), EOL);
+                    if ($this->settings->isDevMode()) {
+                        array_map(static fn ($line) => printf('  %s%s', $line, EOL), $e->getTrace());
+                    }
                 }
-                $exporter->convert($collection, $outputPath);
-                printf('  OK: %s%s', $exporter->getOutputPath(), PHP_EOL);
             }
-            print(PHP_EOL);
+            print(EOL);
             ++$success;
         }
-        unset($this->converters, $type, $exporter, $outputPath, $this->collections, $collectionName, $collection);
+        unset($this->converters, $type, $converter, $outputPath, $this->collections, $collectionName, $collection);
         $this->printStats($success, $current);
     }
 
@@ -315,24 +316,25 @@ class Processor
             $timeFmt = 'sec';
         }
         $ram = (memory_get_peak_usage(true) - $this->initRam) / 1024 / 1024;
-        printf("Converted %d/%d in %.2f $timeFmt using up to %.2f MiB RAM%s", $success, $count, $time, $ram, PHP_EOL);
+        printf("Converted %d/%d in %.2f $timeFmt using up to %.2f MiB RAM%s", $success, $count, $time, $ram, EOL);
     }
 
     /**
      * @return string[]
      */
-    public function version(): array
+    public static function version(): array
     {
-        return ["Postman collection converter v" . self::VERSION];
+        return ['Postman collection converter v' . self::VERSION];
     }
 
     /**
      * @return string[]
      */
-    public function copyright(): array
+    public static function copyright(): array
     {
+        $years = ($year = (int)date('Y')) > 2023 ? "2023 - $year" : $year;
         return [
-            'Anthony Axenov (c) ' . date('Y') . ", MIT license",
+            "Anthony Axenov (c) $years, MIT license",
             'https://git.axenov.dev/anthony/pm-convert'
         ];
     }
@@ -340,9 +342,9 @@ class Processor
     /**
      * @return array
      */
-    public function usage(): array
+    public static function usage(): array
     {
-        return array_merge($this->version(), [
+        return array_merge(static::version(), [
             'Usage:',
             "\t./pm-convert -f|-d PATH -o OUTPUT_PATH [ARGUMENTS] [FORMATS]",
             "\tphp pm-convert -f|-d PATH -o OUTPUT_PATH [ARGUMENTS] [FORMATS]",
@@ -356,6 +358,7 @@ class Processor
             "\t-e, --env           - use environment file with variables to replace in requests",
             "\t--var \"NAME=VALUE\"  - force replace specified env variable called NAME with custom VALUE",
             "\t-p, --preserve      - do not delete OUTPUT_PATH (if exists)",
+            "\t    --dump          - convert provided arguments into settings file in `pwd",
             "\t-h, --help          - show this help message and exit",
             "\t-v, --version       - show version info and exit",
             '',
@@ -388,6 +391,6 @@ class Processor
             "        -o ~/postman_export \ ",
             "       --all",
             "",
-        ], $this->copyright());
+        ], static::copyright());
     }
 }

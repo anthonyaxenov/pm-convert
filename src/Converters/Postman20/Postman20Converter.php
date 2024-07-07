@@ -6,9 +6,7 @@ namespace PmConverter\Converters\Postman20;
 
 use PmConverter\Collection;
 use PmConverter\CollectionVersion;
-use PmConverter\Converters\{
-    Abstract\AbstractConverter,
-    ConverterContract};
+use PmConverter\Converters\Abstract\AbstractConverter;
 use PmConverter\Exceptions\CannotCreateDirectoryException;
 use PmConverter\Exceptions\DirectoryIsNotWriteableException;
 use PmConverter\FileSystem;
@@ -16,7 +14,7 @@ use PmConverter\FileSystem;
 /**
  * Converts Postman Collection v2.1 to v2.0
  */
-class Postman20Converter extends AbstractConverter implements ConverterContract
+class Postman20Converter extends AbstractConverter
 {
     protected const FILE_EXT = 'v20.postman_collection.json';
 
@@ -26,25 +24,25 @@ class Postman20Converter extends AbstractConverter implements ConverterContract
      * Converts collection requests
      *
      * @param Collection $collection
-     * @param string $outputPath
-     * @return void
+     * @return static
      * @throws CannotCreateDirectoryException
      * @throws DirectoryIsNotWriteableException
      */
-    public function convert(Collection $collection, string $outputPath): void
+    public function convert(Collection $collection): static
     {
         $this->collection = $collection;
         // if data was exported from API, here is already valid json to
         // just flush it in file, otherwise we need to convert it deeper
-        if ($this->collection->version() === CollectionVersion::Version21) {
+        if ($this->collection->version === CollectionVersion::Version21) {
             $this->collection->info->schema = str_replace('/v2.1.', '/v2.0.', $this->collection->info->schema);
             $this->convertAuth($this->collection->raw());
             foreach ($this->collection->item as $item) {
                 $this->convertItem($item);
             }
         }
-        $this->prepareOutputDir($outputPath);
+        $this->outputPath = FileSystem::makeDir($this->outputPath);
         $this->writeCollection();
+        return $this;
     }
 
     /**
@@ -57,7 +55,7 @@ class Postman20Converter extends AbstractConverter implements ConverterContract
     protected function writeCollection(): bool
     {
         $filedir = FileSystem::makeDir($this->outputPath);
-        $filepath = sprintf('%s%s%s.%s', $filedir, DIRECTORY_SEPARATOR, $this->collection->name(), static::FILE_EXT);
+        $filepath = sprintf('%s%s%s.%s', $filedir, DS, $this->collection->name(), static::FILE_EXT);
         return file_put_contents($filepath, $this->collection) > 0;
     }
 
@@ -97,11 +95,11 @@ class Postman20Converter extends AbstractConverter implements ConverterContract
         if (empty($request->auth)) {
             return;
         }
-        $type = $request->auth->type;
-        if ($type !== 'noauth' && is_array($request->auth->$type)) {
-            $auth = [];
+        $auth = ['type' => 'noauth'];
+        $type = strtolower($request->auth->type);
+        if ($type !== 'noauth') {
             foreach ($request->auth->$type as $param) {
-                $auth[$param->key] = $param->value;
+                $auth[$param->key] = $param->value ?? '';
             }
             $request->auth->$type = (object)$auth;
         }

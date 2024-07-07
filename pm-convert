@@ -2,6 +2,8 @@
 <?php
 
 declare(strict_types=1);
+const EOL = PHP_EOL;
+const DS = DIRECTORY_SEPARATOR;
 
 use PmConverter\Processor;
 
@@ -22,12 +24,12 @@ is_null($file) && throw new RuntimeException('Unable to locate autoload.php file
 
 $processor = new Processor($argv);
 try {
-    $processor->convert();
+    $processor->handle();
 } catch (InvalidArgumentException $e) {
-    fwrite(STDERR, sprintf('ERROR: %s%s', $e->getMessage(), PHP_EOL));
-    print(implode(PHP_EOL, $processor->usage()));
+    fwrite(STDERR, sprintf('ERROR: %s%s', $e->getMessage(), EOL));
+    print(implode(EOL, Processor::usage()));
     die(1);
 } catch (Exception $e) {
-    fwrite(STDERR, sprintf('ERROR: %s%s', $e->getMessage(), PHP_EOL));
+    fwrite(STDERR, sprintf('ERROR: %s%s', $e->getMessage(), EOL));
     die(1);
 }

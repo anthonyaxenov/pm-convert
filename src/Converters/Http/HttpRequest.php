@@ -5,8 +5,7 @@ declare(strict_types=1);
 namespace PmConverter\Converters\Http;
 
 use PmConverter\Converters\Abstract\AbstractRequest;
-use PmConverter\Exceptions\{
-    EmptyHttpVerbException};
+use PmConverter\Exceptions\EmptyHttpVerbException;
 
 /**
  * Class to determine file content with http request format
@@ -29,7 +28,7 @@ class HttpRequest extends AbstractRequest
      */
     protected function prepareHeaders(): array
     {
-        $output[] = sprintf('%s %s HTTP/%s', $this->getVerb(), $this->getUrl(), $this->getHttpVersion());
+        $output[] = sprintf('%s %s HTTP/%s', $this->getVerb(), $this->getRawUrl(), $this->getHttpVersion());
         foreach ($this->headers as $name => $data) {
             $output[] = sprintf('%s%s: %s', $data['disabled'] ? '# ' : '', $name, $data['value']);
         }
@@ -69,6 +68,6 @@ class HttpRequest extends AbstractRequest
             $this->prepareHeaders(),
             $this->prepareBody()
         );
-        return implode(PHP_EOL, $output);
+        return implode(EOL, $output);
     }
 }

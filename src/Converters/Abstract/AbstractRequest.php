@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace PmConverter\Converters\Abstract;
 
+use PmConverter\CollectionVersion;
 use PmConverter\Converters\RequestContract;
-use PmConverter\Exceptions\{
-    EmptyHttpVerbException,
-    InvalidHttpVersionException};
+use PmConverter\Exceptions\EmptyHttpVerbException;
+use PmConverter\Exceptions\InvalidHttpVersionException;
 use PmConverter\HttpVersion;
 use Stringable;
 
@@ -22,9 +22,9 @@ abstract class AbstractRequest implements Stringable, RequestContract
     protected string $verb;
 
     /**
-     * @var string URL where to send a request
+     * @var object|string URL where to send a request
      */
-    protected string $url;
+    protected object|string $url;
 
     /**
      * @var float HTTP protocol version
@@ -55,6 +55,15 @@ abstract class AbstractRequest implements Stringable, RequestContract
      * @var string Request body type
      */
     protected string $bodymode = 'raw';
+
+
+    protected CollectionVersion $version;
+
+    public function setVersion(CollectionVersion $version): static
+    {
+        $this->version = $version;
+        return $this;
+    }
 
     /**
      * @inheritDoc
@@ -92,7 +101,7 @@ abstract class AbstractRequest implements Stringable, RequestContract
      */
     public function getName(): string
     {
-        return str_replace(DIRECTORY_SEPARATOR, '_', $this->name);
+        return str_replace(DS, '_', $this->name);
     }
 
     /**
@@ -133,7 +142,7 @@ abstract class AbstractRequest implements Stringable, RequestContract
     /**
      * @inheritDoc
      */
-    public function setUrl(string $url): static
+    public function setUrl(object|string $url): static
     {
         $this->url = $url;
         return $this;
@@ -142,9 +151,9 @@ abstract class AbstractRequest implements Stringable, RequestContract
     /**
      * @inheritDoc
      */
-    public function getUrl(): string
+    public function getRawUrl(): string
     {
-        return $this->url ?: '<empty url>';
+        return is_object($this->url) ? $this->url->raw : $this->url;
     }
 
     /**
@@ -186,7 +195,11 @@ abstract class AbstractRequest implements Stringable, RequestContract
         if (!empty($auth)) {
             switch ($auth->type) {
                 case 'bearer':
-                    $this->setHeader('Authorization', 'Bearer ' . $auth->{$auth->type}[0]->value);
+                    $this->setHeader('Authorization', 'Bearer ' . match ($this->version) {
+                        CollectionVersion::Version20 => $auth->{$auth->type}->token,
+                        CollectionVersion::Version21 => $auth->{$auth->type}[0]->value,
+                        default => null
+                    });
                     break;
                 default:
                     break;

@@ -72,12 +72,12 @@ class CurlRequest extends AbstractRequest
                 "curl \ ",
                 "\t--http1.1 \ ", //TODO proto
                 "\t--request $this->verb \ ",
-                "\t--location $this->url \ ",
+                "\t--location {$this->getRawUrl()} \ ",
             ],
             $this->prepareHeaders(),
             $this->prepareBody()
         );
         $output[] = rtrim(array_pop($output), '\ ');
-        return implode(PHP_EOL, array_merge($output, ['']));
+        return implode(EOL, array_merge($output, ['']));
     }
 }

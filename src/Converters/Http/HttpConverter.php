@@ -4,11 +4,9 @@ declare(strict_types=1);
 
 namespace PmConverter\Converters\Http;
 
-use PmConverter\Converters\{
-    Abstract\AbstractConverter,
-    ConverterContract};
+use PmConverter\Converters\Abstract\AbstractConverter;
 
-class HttpConverter extends AbstractConverter implements ConverterContract
+class HttpConverter extends AbstractConverter
 {
     protected const FILE_EXT = 'http';
 
