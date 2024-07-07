@@ -44,6 +44,9 @@ class Environment implements ArrayAccess
      */
     public function readFromFile(string $filepath): static
     {
+        if (empty($filepath)) {
+            return $this;
+        }
         $content = file_get_contents(static::$filepath = $filepath);
         $content = json_decode($content, flags: JSON_THROW_ON_ERROR); //TODO try-catch
         $content || throw new JsonException("not a valid environment: $filepath");

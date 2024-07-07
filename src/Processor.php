@@ -26,7 +26,7 @@ class Processor
     /**
      * Converter version
      */
-    public const VERSION = '1.6.0';
+    public const VERSION = '1.6.1';
 
     /**
      * @var int Initial timestamp
@@ -62,6 +62,8 @@ class Processor
      * Constructor
      *
      * @param array $argv Arguments came from cli
+     * @throws IncorrectSettingsFileException
+     * @throws JsonException
      */
     public function __construct(protected readonly array $argv)
     {
@@ -83,7 +85,9 @@ class Processor
      */
     protected function parseArgs(): void
     {
-        foreach ($this->argv as $idx => $arg) {
+        $arguments = array_slice($this->argv, 1);
+        $needHelp = count($arguments) === 0 && !$this->settings::fileExists();
+        foreach ($arguments as $idx => $arg) {
             switch ($arg) {
                 case '-f':
                 case '--file':
@@ -162,8 +166,12 @@ class Processor
 
                 case '-h':
                 case '--help':
-                    die(implode(EOL, $this->usage()) . EOL);
+                    $needHelp = true;
+                    break;
             }
+        }
+        if ($needHelp) {
+            die(implode(EOL, $this->usage()) . EOL);
         }
         if (empty($this->settings->collectionPaths())) {
             throw new InvalidArgumentException('there are no collections to convert');
