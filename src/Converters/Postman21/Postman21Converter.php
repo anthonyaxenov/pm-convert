@@ -6,9 +6,7 @@ namespace PmConverter\Converters\Postman21;
 
 use PmConverter\Collection;
 use PmConverter\CollectionVersion;
-use PmConverter\Converters\{
-    Abstract\AbstractConverter,
-    ConverterContract};
+use PmConverter\Converters\Abstract\AbstractConverter;
 use PmConverter\Exceptions\CannotCreateDirectoryException;
 use PmConverter\Exceptions\DirectoryIsNotWriteableException;
 use PmConverter\FileSystem;
@@ -16,7 +14,7 @@ use PmConverter\FileSystem;
 /**
  * Converts Postman Collection v2.0 to v2.1
  */
-class Postman21Converter extends AbstractConverter implements ConverterContract
+class Postman21Converter extends AbstractConverter
 {
     protected const FILE_EXT = 'v21.postman_collection.json';
 
@@ -26,25 +24,25 @@ class Postman21Converter extends AbstractConverter implements ConverterContract
      * Converts collection requests
      *
      * @param Collection $collection
-     * @param string $outputPath
-     * @return void
+     * @return static
      * @throws CannotCreateDirectoryException
      * @throws DirectoryIsNotWriteableException
      */
-    public function convert(Collection $collection, string $outputPath): void
+    public function convert(Collection $collection): static
     {
         $this->collection = $collection;
         // if data was exported from API, here is already valid json to
         // just flush it in file, otherwise we need to convert it deeper
-        if ($this->collection->version() === CollectionVersion::Version20) {
+        if ($this->collection->version === CollectionVersion::Version20) {
             $this->collection->info->schema = str_replace('/v2.0.', '/v2.1.', $this->collection->info->schema);
             $this->convertAuth($this->collection->raw());
             foreach ($this->collection->item as $item) {
                 $this->convertItem($item);
             }
         }
-        $this->prepareOutputDir($outputPath);
+        $this->outputPath = FileSystem::makeDir($this->outputPath);
         $this->writeCollection();
+        return $this;
     }
 
     /**

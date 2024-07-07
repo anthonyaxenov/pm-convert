@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace PmConverter;
 
+use Exception;
 use JsonException;
-use PmConverter\Exceptions\{
-    CannotCreateDirectoryException,
-    DirectoryIsNotReadableException,
-    DirectoryIsNotWriteableException,
-    DirectoryNotExistsException};
+use PmConverter\Exceptions\CannotCreateDirectoryException;
+use PmConverter\Exceptions\DirectoryIsNotReadableException;
+use PmConverter\Exceptions\DirectoryIsNotWriteableException;
+use PmConverter\Exceptions\DirectoryNotExistsException;
 
 /**
  * Helper class to work with files and directories
@@ -24,7 +24,7 @@ class FileSystem
      */
     public static function normalizePath(string $path): string
     {
-        $path = str_replace('~', $_SERVER['HOME'], $path);
+        $path = str_replace('~/', "{$_SERVER['HOME']}/", $path);
         return rtrim($path, DS);
     }
 
@@ -112,13 +112,14 @@ class FileSystem
      * @param string $path
      * @return bool
      * @throws JsonException
+     * @throws Exception
      */
     public static function isCollectionFile(string $path): bool
     {
-        return (!empty($path = trim(static::normalizePath($path))))
+        return (!empty($path = static::normalizePath($path)))
             && str_ends_with($path, '.postman_collection.json')
             && file_exists($path)
             && is_readable($path)
-            && Collection::fromFile($path)->version() !== CollectionVersion::Unknown;
+            && Collection::detectFileVersion($path) !== CollectionVersion::Unknown;
     }
 }

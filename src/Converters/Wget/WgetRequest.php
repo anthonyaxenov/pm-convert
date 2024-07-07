@@ -77,16 +77,16 @@ class WgetRequest extends AbstractRequest
         if ($this->getBodymode() === 'formdata') {
             if ($this->getBody()) {
                 if ($this->getVerb() === 'GET') {
-                    $output[] = sprintf("\t%s?%s", $this->getUrl(), http_build_query($this->prepareBody()));
+                    $output[] = sprintf("\t%s?%s", $this->getRawUrl(), http_build_query($this->prepareBody()));
                 } else {
                     $output[] = sprintf("\t--body-data '%s' \ ", http_build_query($this->prepareBody()));
-                    $output[] = sprintf("\t%s", $this->getUrl());
+                    $output[] = sprintf("\t%s", $this->getRawUrl());
                 }
             }
         } else {
             if ($this->getVerb() !== 'GET') {
                 $output[] = sprintf("\t--body-data '%s' \ ", implode("\n", $this->prepareBody()));
-                $output[] = sprintf("\t%s", $this->getUrl());
+                $output[] = sprintf("\t%s", $this->getRawUrl());
             }
         }
         return implode(EOL, array_merge($output, ['']));

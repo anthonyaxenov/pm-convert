@@ -4,11 +4,9 @@ declare(strict_types=1);
 
 namespace PmConverter\Converters\Wget;
 
-use PmConverter\Converters\{
-    Abstract\AbstractConverter,
-    ConverterContract};
+use PmConverter\Converters\Abstract\AbstractConverter;
 
-class WgetConverter extends AbstractConverter implements ConverterContract
+class WgetConverter extends AbstractConverter
 {
     protected const FILE_EXT = 'sh';
 

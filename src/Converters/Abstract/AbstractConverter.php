@@ -5,21 +5,19 @@ declare(strict_types=1);
 namespace PmConverter\Converters\Abstract;
 
 use Exception;
+use Iterator;
 use PmConverter\Collection;
-use PmConverter\Converters\{
-    ConverterContract,
-    RequestContract};
+use PmConverter\Converters\RequestContract;
 use PmConverter\Environment;
-use PmConverter\Exceptions\{
-    CannotCreateDirectoryException,
-    DirectoryIsNotWriteableException,
-    InvalidHttpVersionException};
+use PmConverter\Exceptions\CannotCreateDirectoryException;
+use PmConverter\Exceptions\DirectoryIsNotWriteableException;
+use PmConverter\Exceptions\InvalidHttpVersionException;
 use PmConverter\FileSystem;
 
 /**
  *
  */
-abstract class AbstractConverter implements ConverterContract
+abstract class AbstractConverter
 {
     /**
      * @var Collection|null
@@ -32,53 +30,66 @@ abstract class AbstractConverter implements ConverterContract
     protected string $outputPath;
 
     /**
-     * @var Environment|null
+     * @var RequestContract[] Converted requests
      */
-    protected ?Environment $env = null;
+    protected array $requests = [];
 
     /**
-     * Sets an environment with vars
+     * Sets output path
      *
-     * @param Environment $env
+     * @param string $outputPath
      * @return $this
      */
-    public function withEnv(Environment $env): static
+    public function to(string $outputPath): self
     {
-        $this->env = $env;
+        $this->outputPath = sprintf('%s%s%s', $outputPath, DS, static::OUTPUT_DIR);
         return $this;
     }
 
     /**
-     * Creates a new directory to save a converted collection into
-     *
-     * @param string $outputPath
-     * @return void
-     * @throws CannotCreateDirectoryException
-     * @throws DirectoryIsNotWriteableException
-     */
-    protected function prepareOutputDir(string $outputPath): void
-    {
-        $outputPath = sprintf('%s%s%s', $outputPath, DS, static::OUTPUT_DIR);
-        $this->outputPath = FileSystem::makeDir($outputPath);
-    }
-
-    /**
-     * Converts collection requests
+     * Converts requests from collection
      *
      * @param Collection $collection
-     * @param string $outputPath
-     * @return void
+     * @return static
      * @throws CannotCreateDirectoryException
      * @throws DirectoryIsNotWriteableException
      * @throws Exception
      */
-    public function convert(Collection $collection, string $outputPath): void
+    public function convert(Collection $collection): static
     {
-        $this->prepareOutputDir($outputPath);
         $this->collection = $collection;
-        $this->setVariables();
-        foreach ($collection->item as $item) {
-            $this->convertItem($item);
+        $this->outputPath = FileSystem::makeDir($this->outputPath);
+        $this->setCollectionVars();
+        foreach ($collection->iterate() as $path => $item) {
+            // $this->requests[$path][] = $this->makeRequest($item);
+            $this->writeRequest($this->makeRequest($item), $path);
+        }
+        return $this;
+    }
+
+    /**
+     * Returns converted requests
+     *
+     * @return Iterator<string, RequestContract>
+     */
+    public function converted(): Iterator
+    {
+        foreach ($this->requests as $path => $requests) {
+            foreach ($requests as $request) {
+                yield $path => $request;
+            }
+        }
+    }
+
+    /**
+     * Writes requests on disk
+     *
+     * @throws Exception
+     */
+    public function flush(): void
+    {
+        foreach ($this->converted() as $path => $request) {
+            $this->writeRequest($request, $path);
         }
     }
 
@@ -87,13 +98,10 @@ abstract class AbstractConverter implements ConverterContract
      *
      * @return $this
      */
-    protected function setVariables(): static
+    protected function setCollectionVars(): static
     {
-        empty($this->env) && $this->env = new Environment($this->collection?->variable);
-        if (!empty($this->collection?->variable)) {
-            foreach ($this->collection->variable as $var) {
-                $this->env[$var->key] = $var->value;
-            }
+        foreach ($this->collection?->variable ?? [] as $var) {
+            Environment::instance()->setCustomVar($var->key, $var->value);
         }
         return $this;
     }
@@ -122,47 +130,24 @@ abstract class AbstractConverter implements ConverterContract
     }
 
     /**
-     * Converts an item to request object and writes it into file
-     *
-     * @throws Exception
-     */
-    protected function convertItem(mixed $item): void
-    {
-        if ($this->isItemFolder($item)) {
-            static $dir_tree;
-            foreach ($item->item as $subitem) {
-                $dir_tree[] = $item->name;
-                $path = implode(DS, $dir_tree);
-                if ($this->isItemFolder($subitem)) {
-                    $this->convertItem($subitem);
-                } else {
-                    $this->writeRequest($this->initRequest($subitem), $path);
-                }
-                array_pop($dir_tree);
-            }
-        } else {
-            $this->writeRequest($this->initRequest($item));
-        }
-    }
-
-    /**
      * Initialiazes request object to be written in file
      *
      * @param object $item
      * @return RequestContract
      * @throws InvalidHttpVersionException
      */
-    protected function initRequest(object $item): RequestContract
+    protected function makeRequest(object $item): RequestContract
     {
         $request_class = static::REQUEST_CLASS;
 
         /** @var RequestContract $request */
         $request = new $request_class();
         $request->setName($item->name);
+        $request->setVersion($this->collection->version);
         $request->setHttpVersion(1.1); //TODO http version?
         $request->setDescription($item->request?->description ?? null);
         $request->setVerb($item->request->method);
-        $request->setUrl($item->request->url->raw);
+        $request->setUrl($item->request->url);
         $request->setHeaders($item->request->header);
         $request->setAuth($item->request?->auth ?? $this->collection?->auth ?? null);
         if ($item->request->method !== 'GET' && !empty($item->request->body)) {
@@ -196,18 +181,9 @@ abstract class AbstractConverter implements ConverterContract
      */
     protected function interpolate(string $content): string
     {
-        if (!$this->env?->hasVars()) {
-            return $content;
-        }
-        $matches = [];
-        if (preg_match_all('/\{\{.*}}/m', $content, $matches, PREG_PATTERN_ORDER) > 0) {
-            foreach ($matches[0] as $key => $var) {
-                if (str_contains($content, $var)) {
-                    $content = str_replace($var, $this->env[$var] ?: $var, $content);
-                    unset($matches[0][$key]);
-                }
-            }
-        }
-        return $content;
+        $replace = static fn ($a) => Environment::instance()->var($var = $a[0]) ?: $var;
+        return Environment::instance()->hasVars()
+            ? preg_replace_callback('/\{\{.*}}/m', $replace, $content)
+            : $content;
     }
 }

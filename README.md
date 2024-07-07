@@ -8,14 +8,17 @@ Without 3rd-party dependencies.
 
 These formats are supported for now: `http`, `curl`, `wget`.
 
-> This project was quickly written in my spare time to solve one exact problem in one NDA-project, so it may
-> contain stupid errors and (for sure) doesn't cover all possible cases according to collection schema.
-> So feel free to propose your improvements.
+> This project has been started and quickly written in my spare time to solve one exact problem in one NDA-project,
+> so it may contain stupid errors and (for sure) doesn't cover all possible cases according to collection schema.
+> Feel free to propose your improvements.
+
+Versions older than the latest are not supported, only current one is.
+If you found an error in old version please ensure if an error you found has been fixed in latest version.
+So please always use the latest version of `pm-convert`.
 
 ## Supported features
 
-* [collection schema **v2.1**](https://schema.postman.com/json/collection/v2.1.0/collection.json);
-* `Bearer` auth;
+* collection schemas [**v2.1**](https://schema.postman.com/json/collection/v2.1.0/collection.json) and [**v2.0**](https://schema.postman.com/json/collection/v2.0.0/collection.json);
 * replace vars in requests by stored in collection and environment file;
 * export one or several collections (or even whole directories) into one or all of formats supported at the same time;
 * all headers (including disabled for `http`-format);
@@ -25,7 +28,7 @@ These formats are supported for now: `http`, `curl`, `wget`.
 ## Planned features
 
 - support as many as possible/necessary of authentication kinds (_currently only `Bearer` supported_);
-- support as many as possible/necessary of body formats (_currently only `json` and `formdata`_);
+- support as many as possible/necessary of body formats (_currently only `json` and `formdata` supported_);
 - documentation generation support (markdown) with response examples (if present) (#6);
 - maybe some another convert formats (like httpie or something...);
 - better logging;
@@ -65,6 +68,7 @@ Possible ARGUMENTS:
         -e, --env           - use environment file with variables to replace in requests
         --var "NAME=VALUE"  - force replace specified env variable called NAME with custom VALUE
         -p, --preserve      - do not delete OUTPUT_PATH (if exists)
+            --dump          - convert provided arguments into settings file in `pwd`
         -h, --help          - show this help message and exit
         -v, --version       - show version info and exit
 
@@ -133,6 +137,62 @@ In such case collection itself places in single root object called `collection` 
 ```
 
 So, pm-convert will just raise actual data up on top level and write into disk.
+
+## Settings file
+
+You may want to specify parameters once and just use them everytime without explicit defining arguments to `pm-convert`.
+
+This might be done in several ways.
+
+1. Save this file as `pm-convert-settings.json` in your project directory:
+
+   ```json
+   {
+       "directories": [],
+       "files": [],
+       "environment": "",
+       "output": "",
+       "preserveOutput": false,
+       "formats": [],
+       "vars": {}
+   }
+   ```
+   
+   Fill it with values you need.
+
+2. Add `--dump` at the end of your command and all arguments you provided will be converted and saved as
+   `pm-convert-settings.json` in your curent working directory. For example in `--help` file will contain this:
+
+   ```json
+   {
+       "directories": [
+           "~/team",
+           "~/personal"
+       ],
+       "files": [
+           "~/dir1/first.postman_collection.json",
+           "~/dir2/second.postman_collection.json"
+       ],
+       "environment": "~/localhost.postman_environment.json",
+       "output": "~/postman_export",
+       "preserveOutput": false,
+       "formats": [
+           "http",
+           "curl",
+           "wget",
+           "v2.0",
+           "v2.1"
+       ],
+       "vars": {
+           "myvar": "some value"
+       }
+   }
+   ```
+
+   If settings file already exists then you will be asked what to do: overwrite it, back it up or exit.
+
+Once settings file saved in current you can just run `pm-convert`.
+Settings will be applied like if you pass them explicitly via arguments.
 
 ## How to implement a new format
 
