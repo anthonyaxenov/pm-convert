@@ -7,6 +7,7 @@ namespace PmConverter;
 use Exception;
 use Generator;
 use JsonException;
+use PmConverter\Enums\CollectionVersion;
 use Stringable;
 
 /**
@@ -111,26 +112,23 @@ class Collection implements Stringable
      */
     public static function detectFileVersion(string $filepath): CollectionVersion
     {
-        $handle = fopen($filepath, 'r');
-        if ($handle === false) {
-            throw new Exception("Cannot open file for reading: $filepath");
+        $content = file_get_contents($filepath);
+
+        if ($content === false) {
+            throw new Exception("cannot read file: $filepath");
         }
-        $content = '';
-        // Postman collection files may be HUGE and I don't need to parse
-        // them here to find value .info.schema field because normally it
-        // is stored at the beginning of a file, so if it's not then this
-        // is a user problem, not mine.
-        while (\mb_strlen($content) <= 2048) {
-            $content .= fgets($handle, 50);
-            if (str_contains($content, 'https://schema.getpostman.com/json/collection')) {
-                if (str_contains($content, '/v2.0.')) {
-                    return CollectionVersion::Version20;
-                }
-                if (str_contains($content, '/v2.1.')) {
-                    return CollectionVersion::Version21;
-                }
-            }
+
+        $json = json_decode($content, true);
+        $schema = $json['info']['schema'] ?? '';
+
+        if (str_ends_with($schema, 'v2.0.0/collection.json')) {
+            return CollectionVersion::Version20;
         }
+
+        if (str_ends_with($schema, 'v2.1.0/collection.json')) {
+            return CollectionVersion::Version21;
+        }
+
         return CollectionVersion::Unknown;
     }
 

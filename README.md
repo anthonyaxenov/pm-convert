@@ -70,7 +70,7 @@ Possible ARGUMENTS:
         -p, --preserve      - do not delete OUTPUT_PATH (if exists)
             --dump          - convert provided arguments into settings file in `pwd`
         -h, --help          - show this help message and exit
-        -v, --version       - show version info and exit
+            --version       - show version info and exit
 
 If no ARGUMENTS passed then --help implied.
 If both -f and -d are specified then only unique set of files from both arguments will be converted.

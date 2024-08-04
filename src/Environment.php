@@ -38,11 +38,11 @@ class Environment implements ArrayAccess
     }
 
     /**
-     * @param string $filepath
+     * @param string|null $filepath
      * @return $this
      * @throws JsonException
      */
-    public function readFromFile(string $filepath): static
+    public function readFromFile(?string $filepath): static
     {
         if (empty($filepath)) {
             return $this;

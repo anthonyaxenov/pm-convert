@@ -2,10 +2,12 @@
 <?php
 
 declare(strict_types=1);
+
+use PmConverter\Handler;
 const EOL = PHP_EOL;
 const DS = DIRECTORY_SEPARATOR;
 
-use PmConverter\Processor;
+const PM_VERSION = '1.7';
 
 $paths = [
     __DIR__ . '/../../autoload.php',
@@ -22,14 +24,13 @@ foreach ($paths as $path) {
 
 is_null($file) && throw new RuntimeException('Unable to locate autoload.php file.');
 
-$processor = new Processor($argv);
+$handler = new Handler();
+$handler::printVersion();
+$handler::printCopyright();
 try {
-    $processor->handle();
-} catch (InvalidArgumentException $e) {
-    fwrite(STDERR, sprintf('ERROR: %s%s', $e->getMessage(), EOL));
-    print(implode(EOL, Processor::usage()));
-    die(1);
+    $handler->init($argv);
+    $handler->start();
 } catch (Exception $e) {
     fwrite(STDERR, sprintf('ERROR: %s%s', $e->getMessage(), EOL));
-    die(1);
+    exit(1);
 }

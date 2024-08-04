@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace PmConverter;
+namespace PmConverter\Enums;
 
 enum CollectionVersion: string
 {

@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace PmConverter\Converters\Abstract;
 
-use PmConverter\CollectionVersion;
 use PmConverter\Converters\RequestContract;
+use PmConverter\Enums\CollectionVersion;
+use PmConverter\Enums\HttpVersion;
 use PmConverter\Exceptions\EmptyHttpVerbException;
 use PmConverter\Exceptions\InvalidHttpVersionException;
-use PmConverter\HttpVersion;
 use Stringable;
 
 /**

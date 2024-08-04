@@ -10,7 +10,7 @@ class AbstractRequestTest extends TestCase
 {
     /**
      * @covers PmConverter\Converters\Abstract\AbstractRequest
-     * @covers PmConverter\HttpVersion
+     * @covers \PmConverter\Enums\HttpVersion
      * @return void
      * @throws InvalidHttpVersionException
      */
@@ -25,7 +25,7 @@ class AbstractRequestTest extends TestCase
     /**
      * @covers PmConverter\Converters\Abstract\AbstractRequest
      * @covers PmConverter\Converters\Abstract\AbstractRequest::getVerb()
-     * @covers PmConverter\HttpVersion
+     * @covers \PmConverter\Enums\HttpVersion
      * @return void
      * @throws InvalidHttpVersionException
      */

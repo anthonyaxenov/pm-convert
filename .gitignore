@@ -1,5 +1,7 @@
 /.idea
 /.vscode
 /vendor
+/nbproject
+
 .phpunit.result.cache
 .phpunit.cache

@@ -6,6 +6,7 @@ namespace PmConverter;
 
 use Exception;
 use JsonException;
+use PmConverter\Enums\CollectionVersion;
 use PmConverter\Exceptions\CannotCreateDirectoryException;
 use PmConverter\Exceptions\DirectoryIsNotReadableException;
 use PmConverter\Exceptions\DirectoryIsNotWriteableException;
@@ -24,7 +25,16 @@ class FileSystem
      */
     public static function normalizePath(string $path): string
     {
-        $path = str_replace('~/', "{$_SERVER['HOME']}/", $path);
+        $path = trim($path);
+
+        if (str_starts_with($path, '~' . DS)) {
+            $path = str_replace('~' . DS, $_SERVER['HOME'] . DS, $path);
+        } elseif (str_starts_with($path, '.' . DS)) {
+            $path = str_replace('.' . DS, $_SERVER['PWD'] . DS, $path);
+        } elseif (!str_starts_with($path, DS)) {
+            $path = $_SERVER['PWD'] . DS . $path;
+        }
+
         return rtrim($path, DS);
     }
 
@@ -116,9 +126,11 @@ class FileSystem
      */
     public static function isCollectionFile(string $path): bool
     {
-        return (!empty($path = static::normalizePath($path)))
+        $path = static::normalizePath($path);
+        return !empty($path)
             && str_ends_with($path, '.postman_collection.json')
             && file_exists($path)
+            && is_file($path)
             && is_readable($path)
             && Collection::detectFileVersion($path) !== CollectionVersion::Unknown;
     }

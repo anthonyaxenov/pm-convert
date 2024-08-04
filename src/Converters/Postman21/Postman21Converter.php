@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace PmConverter\Converters\Postman21;
 
 use PmConverter\Collection;
-use PmConverter\CollectionVersion;
 use PmConverter\Converters\Abstract\AbstractConverter;
+use PmConverter\Enums\CollectionVersion;
 use PmConverter\Exceptions\CannotCreateDirectoryException;
 use PmConverter\Exceptions\DirectoryIsNotWriteableException;
 use PmConverter\FileSystem;

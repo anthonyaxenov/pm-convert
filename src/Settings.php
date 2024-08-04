@@ -4,10 +4,11 @@ declare(strict_types=1);
 
 namespace PmConverter;
 
+use Exception;
 use InvalidArgumentException;
 use JsonException;
 use PmConverter\Converters\ConvertFormat;
-use PmConverter\Exceptions\IncorrectSettingsFileException;
+use PmConverter\Enums\ArgumentNames as AN;
 
 /**
  * Class responsible for settings storage and dumping
@@ -15,9 +16,9 @@ use PmConverter\Exceptions\IncorrectSettingsFileException;
 class Settings
 {
     /**
-     * @var string Full path to settings file
+     * @var string|null Full path to settings file
      */
-    protected static string $filepath;
+    protected ?string $filePath = null;
 
     /**
      * @var bool Flag to output some debug-specific messages
@@ -27,7 +28,7 @@ class Settings
     /**
      * @var string[] Paths to collection directories
      */
-    protected array $directories = [];
+    protected array $dirPaths = [];
 
     /**
      * @var string[] Paths to collection files
@@ -35,14 +36,14 @@ class Settings
     protected array $collectionPaths = [];
 
     /**
-     * @var string Output path where to put results in
+     * @var string|null Output path where to put results in
      */
-    protected string $outputPath = '';
+    protected ?string $outputPath;
 
     /**
      * @var bool Flag to remove output directories or not before conversion started
      */
-    protected bool $preserveOutput = false;
+    protected bool $preserveOutput;
 
     /**
      * @var string[] Additional variables
@@ -55,36 +56,138 @@ class Settings
     protected array $formats = [];
 
     /**
-     * @var string Path to environment file
+     * @var string|null Path to environment file
      */
-    protected string $envFilepath = '';
+    protected ?string $envFilePath = null;
 
     /**
-     * @return bool
+     * @throws JsonException
      */
-    public static function fileExists(): bool
+    public function __construct()
     {
-        return file_exists(self::$filepath);
+        $this->loadFromDefaults();
     }
 
     /**
-     * @return self
-     * @throws IncorrectSettingsFileException
+     * Loads settings from file
+     *
+     * @param string|null $filePath
+     * @return void
+     * @throws Exception
+     */
+    public function loadFromFile(?string $filePath = null): void
+    {
+        if (is_null($filePath)) {
+            $filePath = sprintf('%s%spm-convert-settings.json', $_SERVER['PWD'], DS);
+        }
+
+        $filePath = trim($filePath);
+
+        if (!file_exists($filePath)) {
+            throw new Exception("file does not exist: $filePath");
+        }
+
+        if (!is_file($filePath)) {
+            throw new Exception("not a file: $filePath");
+        }
+
+        if (!is_readable($filePath)) {
+            throw new Exception("file is not readable: $filePath");
+        }
+
+        $content = file_get_contents($filePath);
+        $settings = json_decode($content ?: '{}', true, JSON_THROW_ON_ERROR);
+
+        $this->setFromArray($settings);
+        $this->filePath = $filePath;
+    }
+
+    /**
+     * Rewrites some defined settings with new values
+     *
+     * @param array $settings
+     * @return void
      * @throws JsonException
      */
-    public static function init(): self
+    public function override(array $settings): void
     {
-        $content = '{}';
-        self::$filepath = sprintf('%s%spm-convert-settings.json', $_SERVER['PWD'], DS);
-        if (self::fileExists()) {
-            $content = trim(file_get_contents(self::$filepath));
+        $settings = array_replace_recursive($this->__serialize(), $settings);
+        $this->setFromArray($settings);
+    }
+
+    /**
+     * Loads settings with default values
+     *
+     * @return void
+     * @throws JsonException
+     */
+    public function loadFromDefaults(): void
+    {
+        $this->setFromArray(self::defaults());
+    }
+
+    /**
+     * Returns default settings values
+     *
+     * @return array
+     */
+    public static function defaults(?string $key = null): mixed
+    {
+        $values = [
+            AN::Config => null,
+            AN::Directories => [],
+            AN::Files => [],
+            AN::Environment => null,
+            AN::Output => null,
+            AN::PreserveOutput => false,
+            AN::Formats => ['http'],
+            AN::Vars => [],
+            AN::DevMode => false,
+            AN::Verbose => false,
+        ];
+
+        return $key ? $values[$key] : $values;
+    }
+
+    /**
+     * Set settings from array
+     *
+     * @param array $settings
+     * @return void
+     * @throws JsonException
+     */
+    protected function setFromArray(array $settings): void
+    {
+        foreach ($settings[AN::Directories] ?? self::defaults(AN::Directories) as $path) {
+            $this->addDirPath($path);
         }
-        try {
-            $settings = json_decode($content ?: '{}', flags: JSON_THROW_ON_ERROR);
-        } catch (JsonException $e) {
-            throw new IncorrectSettingsFileException('Incorrect settings file: ' . $e->getMessage(), $e->getCode());
+
+        foreach ($settings[AN::Files] ?? self::defaults(AN::Files) ?? [] as $path) {
+            $this->addFilePath($path);
         }
-        return new self($settings);
+
+        $this->setEnvFilePath($settings[AN::Environment] ?? self::defaults(AN::Environment));
+        $this->setOutputPath($settings[AN::Output] ?? self::defaults(AN::Output));
+        $this->setPreserveOutput($settings[AN::PreserveOutput] ?? self::defaults(AN::PreserveOutput));
+
+        foreach ($settings[AN::Formats] ?? self::defaults(AN::Formats) as $format) {
+            $this->addFormat(ConvertFormat::fromArg($format));
+        }
+
+        $this->vars = $settings[AN::Vars] ?? self::defaults(AN::Vars);
+        $this->setDevMode($settings[AN::DevMode] ?? self::defaults(AN::DevMode));
+    }
+
+    /**
+     * Checks wether settings file exists or not
+     *
+     * @return bool
+     */
+    public function fileExists(): bool
+    {
+        return is_file($this->filePath)
+            && is_readable($this->filePath)
+            && is_writable($this->filePath);
     }
 
     /**
@@ -92,77 +195,65 @@ class Settings
      *
      * @return string
      */
-    public static function filepath(): string
+    public function filePath(): string
     {
-        return self::$filepath;
+        return $this->filePath;
     }
 
     /**
-     * @param object $settings
-     * @throws JsonException
-     */
-    protected function __construct(object $settings)
-    {
-        foreach ($settings->directories ?? [] as $path) {
-            $this->addDirPath($path);
-        }
-        foreach ($settings->files ?? [] as $path) {
-            $this->addFilePath($path);
-        }
-        $this->setDevMode(!empty($settings->devMode));
-        $this->setPreserveOutput(!empty($settings->preserveOutput));
-        isset($settings->environment) && $this->setEnvFilepath($settings->environment);
-        isset($settings->output) && $this->setOutputPath($settings->output);
-        foreach ($settings->formats ?? [] as $format) {
-            $this->addFormat(ConvertFormat::fromArg($format));
-        }
-        foreach ($settings->vars ?? [] as $name => $value) {
-            $this->vars[$name] = $value;
-        }
-    }
-
-    /**
+     * Adds directory path into current settings array and fills files array with its content
+     *
      * @param string $path
      * @return void
      * @throws JsonException
      */
     public function addDirPath(string $path): void
     {
-        $this->directories = array_unique(array_merge(
-            $this->directories ?? [],
+        $this->dirPaths = array_unique(array_merge(
+            $this->dirPaths ?? [],
             [FileSystem::normalizePath($path)]
         ));
+
         $files = array_filter(
             FileSystem::dirContents($path),
             static fn ($filename) => FileSystem::isCollectionFile($filename)
         );
+
         $this->collectionPaths = array_unique(array_merge($this->collectionPaths ?? [], $files));
     }
 
     /**
+     * Adds collection file into current settings array
+     *
      * @param string $path
      * @return void
      * @throws JsonException
      */
     public function addFilePath(string $path): void
     {
-        $normpath = FileSystem::normalizePath($path);
-        if (!FileSystem::isCollectionFile($normpath)) {
+        if (!FileSystem::isCollectionFile($path)) {
             throw new InvalidArgumentException("not a valid collection: $path");
         }
-        in_array($path, $this->collectionPaths) || $this->collectionPaths[] = $path;
+
+        if (!in_array($path, $this->collectionPaths)) {
+            $this->collectionPaths[] = FileSystem::normalizePath($path);
+        }
     }
 
     /**
-     * @param string $outputPath
+     * Sets output directory path
+     *
+     * @param string|null $outputPath
      * @return void
      */
-    public function setOutputPath(string $outputPath): void
+    public function setOutputPath(?string $outputPath): void
     {
         $this->outputPath = $outputPath;
     }
 
     /**
+     * Sets developer mode setting
+     *
      * @param bool $devMode
      * @return void
      */
@@ -172,6 +263,8 @@ class Settings
     }
 
     /**
+     * Adds a format to convert to into current settings array
+     *
      * @param ConvertFormat $format
      * @return void
      */
@@ -191,6 +284,8 @@ class Settings
     }
 
     /**
+     * Sets a setting responsible for saving old convertion results
+     *
      * @param bool $preserveOutput
      * @return void
      */
@@ -200,15 +295,21 @@ class Settings
     }
 
     /**
-     * @param string $filepath
+     * Sets environment filepath setting
+     *
+     * @param string|null $filepath
      * @return void
      */
-    public function setEnvFilepath(string $filepath): void
+    public function setEnvFilePath(?string $filepath): void
     {
-        $this->envFilepath = FileSystem::normalizePath($filepath);
+        $this->envFilePath = is_string($filepath)
+            ? FileSystem::normalizePath($filepath)
+            : $filepath;
     }
 
     /**
+     * Returns current value of developer mode setting
+     *
      * @return bool
      */
     public function isDevMode(): bool
@@ -217,6 +318,8 @@ class Settings
     }
 
     /**
+     * Returns current value of collection files setting
+     *
      * @return string[]
      */
     public function collectionPaths(): array
@@ -225,14 +328,18 @@ class Settings
     }
 
     /**
-     * @return string
+     * Returns current value of output directory path setting
+     *
+     * @return string|null
      */
-    public function outputPath(): string
+    public function outputPath(): ?string
     {
         return $this->outputPath;
     }
 
     /**
+     * Returns current value of preserve output setting
+     *
      * @return bool
      */
     public function isPreserveOutput(): bool
@@ -241,6 +348,8 @@ class Settings
     }
 
     /**
+     * Returns current convert formats
+     *
      * @return ConvertFormat[]
      */
     public function formats(): array
@@ -249,11 +358,13 @@ class Settings
     }
 
     /**
-     * @return string
+     * Returns current value of environment filepath  setting
+     *
+     * @return string|null
      */
-    public function envFilepath(): string
+    public function envFilepath(): ?string
     {
-        return $this->envFilepath;
+        return $this->envFilePath;
     }
 
     /**
@@ -264,17 +375,17 @@ class Settings
     public function __serialize(): array
     {
         return [
-            'dev' => $this->isDevMode(),
-            'directories' => $this->directories,
-            'files' => $this->collectionPaths(),
-            'environment' => $this->envFilepath(),
-            'output' => $this->outputPath(),
-            'preserve-output' => $this->isPreserveOutput(),
-            'formats' => array_values(array_map(
+            AN::DevMode => $this->isDevMode(),
+            AN::Directories => $this->dirPaths,
+            AN::Files => $this->collectionPaths(),
+            AN::Environment => $this->envFilepath(),
+            AN::Output => $this->outputPath(),
+            AN::PreserveOutput => $this->isPreserveOutput(),
+            AN::Formats => array_values(array_map(
                 static fn (ConvertFormat $format) => $format->toArg(),
                 $this->formats(),
             )),
-            'vars' => $this->vars,
+            AN::Vars => $this->vars,
         ];
     }
 
@@ -307,7 +418,8 @@ class Settings
      */
     public function backup(): string
     {
-        copy(self::$filepath, $newfilepath = self::$filepath . '.bak.' . time());
-        return $newfilepath;
+        $newFilePath = $this->filePath() . '.bak.' . time();
+        copy($this->filePath(), $newFilePath);
+        return $newFilePath;
     }
 }

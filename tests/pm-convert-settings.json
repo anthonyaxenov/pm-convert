@@ -1,0 +1,10 @@
+{
+    "files": [
+        "collections/20-API Lifecycle.postman_collection.json"
+    ],
+    "output": "converted",
+    "preserveOutput": false,
+    "formats": [
+        "http"
+    ]
+}
