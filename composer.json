@@ -12,7 +12,7 @@
     ],
     "keywords": ["postman", "collection", "converter", "http", "wget", "curl", "api", "convert"],
     "require": {
-        "php": "^8.1",
+        "php": "^8.2",
         "ext-json": "*",
         "ext-mbstring": "*",
         "ext-readline": "*"
